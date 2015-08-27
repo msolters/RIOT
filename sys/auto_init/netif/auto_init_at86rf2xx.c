@@ -20,7 +20,7 @@
 #ifdef MODULE_AT86RF2XX
 
 #include "board.h"
-#include "net/gnrc/nomac.h"
+#include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc.h"
 
 #include "at86rf2xx.h"
@@ -39,7 +39,7 @@
 #define AT86RF2XX_NUM (sizeof(at86rf2xx_params)/sizeof(at86rf2xx_params[0]))
 
 static at86rf2xx_t at86rf2xx_devs[AT86RF2XX_NUM];
-static char _nomac_stacks[AT86RF2XX_MAC_STACKSIZE][AT86RF2XX_NUM];
+static char _lwmac_stacks[AT86RF2XX_MAC_STACKSIZE][AT86RF2XX_NUM];
 
 void auto_init_at86rf2xx(void)
 {
@@ -58,7 +58,7 @@ void auto_init_at86rf2xx(void)
             DEBUG("Error initializing AT86RF2xx radio device!");
         }
         else {
-            gnrc_nomac_init(_nomac_stacks[i],
+            gnrc_lwmac_init(_lwmac_stacks[i],
                             AT86RF2XX_MAC_STACKSIZE, AT86RF2XX_MAC_PRIO,
                             "at86rfxx", (gnrc_netdev_t *)&at86rf2xx_devs[i]);
         }
