@@ -175,8 +175,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         netopt_enable_t autoack = NETOPT_DISABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
 
-        if(lwmac->rx_in_progress  ||
-           _get_netdev_state(lwmac) == NETOPT_STATE_RX) {
+        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
             LOG_WARNING("Receiving now, so cancel sending WA\n");
             gnrc_pktbuf_release(pkt);
             GOTO_RX_STATE(RX_STATE_WAIT_FOR_DATA, false);
@@ -208,8 +207,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         bool found_data = false;
         bool found_wr = false;
 
-        if(lwmac->rx_in_progress  ||
-           _get_netdev_state(lwmac) == NETOPT_STATE_RX) {
+        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
             LOG_WARNING("Receiving, so wait a moment\n");
             break;
         }

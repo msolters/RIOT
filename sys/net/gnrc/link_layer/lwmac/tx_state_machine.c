@@ -145,8 +145,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         netopt_enable_t autoack = NETOPT_DISABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
 
-        if(lwmac->rx_in_progress ||
-           _get_netdev_state(lwmac) == NETOPT_STATE_RX) {
+        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
             LOG_WARNING("Receiving now, so cancel sending WR\n");
             gnrc_pktbuf_release(pkt);
             GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
@@ -178,8 +177,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             GOTO_TX_STATE(TX_STATE_FAILED, true);
         }
 
-        if(lwmac->rx_in_progress ||
-           _get_netdev_state(lwmac) == NETOPT_STATE_RX) {
+        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
             LOG_WARNING("Wait for completion of frame reception\n");
             break;
         }

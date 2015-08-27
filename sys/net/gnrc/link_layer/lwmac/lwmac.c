@@ -459,7 +459,7 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
     {
     case NETDEV_EVENT_RX_STARTED:
         LOG_DEBUG("NETDEV_EVENT_RX_STARTED\n");
-        lwmac.rx_in_progress = true;
+        lwmac.rx_started = true;
         break;
     case NETDEV_EVENT_RX_COMPLETE:
     {
@@ -467,14 +467,24 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
 
         gnrc_pktsnip_t* pkt = (gnrc_pktsnip_t *) data;
 
-        if(!lwmac.rx_in_progress) {
-            /* Maybe sending kicked in and frame buffer is now corrupted */
+        /* Prevent packet corruption when a packet is sent before the previous
+         * received packet has been downloaded. This happens e.g. when a timeout
+         * expires that causes the tx state machine to send a packet. When a
+         * packet arrives after the timeout, the notification is queued but the
+         * tx state machine continues to send and then destroys the received
+         * packet in the frame buffer. After completion, the queued notification
+         * will be handled a corrupted packet will be downloaded. Therefore
+         * keep track that RX_STARTED is followed by RX_COMPLETE.
+         *
+         * TODO: transceivers might have 2 frame buffers, so make this optional
+         */
+        if(!lwmac.rx_started) {
             LOG_WARNING("Maybe sending kicked in and frame buffer is now corrupted\n");
             gnrc_pktbuf_release(pkt);
             break;
         }
 
-        lwmac.rx_in_progress = false;
+        lwmac.rx_started = false;
 
         if(!packet_queue_push(&lwmac.rx.queue, pkt, 0))
         {
@@ -485,22 +495,22 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
     }
     case NETDEV_EVENT_TX_STARTED:
         lwmac.tx_feedback = TX_FEEDBACK_UNDEF;
-        lwmac.rx_in_progress = false;
+        lwmac.rx_started = false;
         LOG_INFO("EVT TX_STARTED\n");
         break;
     case NETDEV_EVENT_TX_COMPLETE:
         lwmac.tx_feedback = TX_FEEDBACK_SUCCESS;
-        lwmac.rx_in_progress = false;
+        lwmac.rx_started = false;
         break;
     case NETDEV_EVENT_TX_NOACK:
         LOG_DEBUG("NETDEV_EVENT_TX_NOACK\n");
         lwmac.tx_feedback = TX_FEEDBACK_NOACK;
-        lwmac.rx_in_progress = false;
+        lwmac.rx_started = false;
         break;
     case NETDEV_EVENT_TX_MEDIUM_BUSY:
         LOG_DEBUG("NETDEV_EVENT_TX_MEDIUM_BUSY\n");
         lwmac.tx_feedback = TX_FEEDBACK_BUSY;
-        lwmac.rx_in_progress = false;
+        lwmac.rx_started = false;
         break;
 
     default:

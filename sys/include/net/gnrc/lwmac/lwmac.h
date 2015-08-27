@@ -166,8 +166,8 @@ typedef struct {
     gnrc_netdev_t* netdev;
     /* Internal state of MAC layer */
     lwmac_state_t state;
-    /* Don't start sending while receiving in progress */
-    bool rx_in_progress;
+    /* Track if a transmission might have corrupted a received packet */
+    bool rx_started;
     /* Own address */
     uint64_t addr;
     unsigned int addr_len;
