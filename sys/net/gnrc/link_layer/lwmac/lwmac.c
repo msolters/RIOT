@@ -59,6 +59,7 @@ static lwmac_t lwmac = LWMAC_INIT;
 static bool lwmac_update(void);
 static void lwmac_set_state(lwmac_state_t newstate);
 static void lwmac_schedule_update(void);
+static bool lwmac_needs_update(void);
 static void rtt_handler(uint32_t event);
 
 /******************************************************************************/
@@ -197,6 +198,14 @@ static uint32_t next_inphase_event(uint32_t last, uint32_t interval)
 inline void lwmac_schedule_update(void)
 {
     lwmac.needs_rescheduling = true;
+}
+
+/******************************************************************************/
+
+// TODO: Don't use global variables
+inline bool lwmac_needs_update(void)
+{
+    return lwmac.needs_rescheduling;
 }
 
 /******************************************************************************/
@@ -490,27 +499,33 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
         {
             LOG_ERROR("Can't push RX packet @ %p, memory full?\n", pkt);
             gnrc_pktbuf_release(pkt);
+            break;
         }
+        lwmac_schedule_update();
         break;
     }
     case NETDEV_EVENT_TX_STARTED:
         lwmac.tx_feedback = TX_FEEDBACK_UNDEF;
         lwmac.rx_started = false;
+        lwmac_schedule_update();
         LOG_INFO("EVT TX_STARTED\n");
         break;
     case NETDEV_EVENT_TX_COMPLETE:
         lwmac.tx_feedback = TX_FEEDBACK_SUCCESS;
         lwmac.rx_started = false;
+        lwmac_schedule_update();
         break;
     case NETDEV_EVENT_TX_NOACK:
         LOG_DEBUG("NETDEV_EVENT_TX_NOACK\n");
         lwmac.tx_feedback = TX_FEEDBACK_NOACK;
         lwmac.rx_started = false;
+        lwmac_schedule_update();
         break;
     case NETDEV_EVENT_TX_MEDIUM_BUSY:
         LOG_DEBUG("NETDEV_EVENT_TX_MEDIUM_BUSY\n");
         lwmac.tx_feedback = TX_FEEDBACK_BUSY;
         lwmac.rx_started = false;
+        lwmac_schedule_update();
         break;
 
     default:
@@ -579,6 +594,7 @@ static void *_lwmac_thread(void *args)
         /* RTT raised an interrupt */
         case LWMAC_EVENT_RTT_TYPE:
             rtt_handler(msg.content.value);
+            lwmac_schedule_update();
             break;
 
         case LWMAC_EVENT_TIMEOUT_TYPE:
@@ -586,6 +602,7 @@ static void *_lwmac_thread(void *args)
             LOG_DEBUG("LWMAC_EVENT_VTIMER_TYPE\n");
             lwmac_timeout_t* timeout = (lwmac_timeout_t*) msg.content.ptr;
             timeout->expired = true;
+            lwmac_schedule_update();
             break;
         }
 
@@ -614,6 +631,7 @@ static void *_lwmac_thread(void *args)
                 gnrc_pktbuf_release(pkt);
                 break;
             }
+            lwmac_schedule_update();
             break;
         }
         /* NETAPI set/get. Can't this be refactored away from here? */
@@ -646,6 +664,7 @@ static void *_lwmac_thread(void *args)
                     LOG_ERROR("NETAPI tries to set unsupported state %u\n",
                           *state);
                 }
+                lwmac_schedule_update();
                 break;
             }
             /* Forward to netdev by default*/
@@ -682,8 +701,8 @@ static void *_lwmac_thread(void *args)
         }
 
         /* Execute main state machine because something just happend*/
-        while(lwmac_update()) {
-            LOG_DEBUG("Reschedule state machine update\n");
+        while(lwmac_needs_update()) {
+            lwmac_update();
         }
     }
 
