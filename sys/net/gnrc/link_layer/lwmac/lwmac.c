@@ -336,7 +336,7 @@ bool lwmac_update(void)
         case RX_STATE_SUCCESSFUL:
             LOG_INFO("Reception finished %ssuccessfully\n", rx_success);
             lwmac_rx_stop(&lwmac);
-            lwmac_set_state(LISTENING);
+            lwmac_set_state(SLEEPING);
             break;
         default:
             lwmac_rx_update(&lwmac);
