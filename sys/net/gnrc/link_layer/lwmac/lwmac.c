@@ -422,6 +422,7 @@ void rtt_handler(uint32_t event)
         alarm = next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_DURATION_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
         LOG_DEBUG("RTT: Wakeup, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
+        lpm_prevent_sleep = 1;
         lwmac_set_state(LISTENING);
         break;
 
@@ -430,6 +431,7 @@ void rtt_handler(uint32_t event)
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         LOG_DEBUG("RTT: Sleeping now, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
         lwmac_set_state(SLEEPING);
+        lpm_prevent_sleep = 0;
         break;
 
     /* Set initial wakeup alarm that starts the cycle */
@@ -437,18 +439,21 @@ void rtt_handler(uint32_t event)
         LOG_DEBUG("RTT: Initialize duty cycling\n");
         alarm = rtt_get_counter() + RTT_MS_TO_TICKS(150);
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
+        lpm_prevent_sleep = 1;
         break;
 
     case LWMAC_EVENT_RTT_STOP:
     case LWMAC_EVENT_RTT_PAUSE:
         rtt_clear_alarm();
         LOG_DEBUG("RTT: Stop duty cycling, now in state %u\n", lwmac.state);
+        lpm_prevent_sleep = 1;
         break;
 
     case LWMAC_EVENT_RTT_RESUME:
         LOG_DEBUG("RTT: Resume duty cycling\n");
         alarm = next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
+        lpm_prevent_sleep = 0;
         break;
     }
 }
@@ -722,12 +727,18 @@ kernel_pid_t gnrc_lwmac_init(char *stack, int stacksize, char priority,
         LOG_ERROR("No netdev supplied or driver not set\n");
         return -ENODEV;
     }
+
+    /* Prevent sleeping until first RTT alarm is set */
+    lpm_prevent_sleep = 1;
+
     /* create new LWMAC thread */
     res = thread_create(stack, stacksize, priority, CREATE_STACKTEST,
                          _lwmac_thread, (void *)dev, name);
     if (res <= 0) {
         LOG_ERROR("Couldn't create thread\n");
+        lpm_prevent_sleep = 0;
         return -EINVAL;
     }
+
     return res;
 }
