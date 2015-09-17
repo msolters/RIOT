@@ -43,7 +43,7 @@
 #include <auto_init.h>
 #endif
 
-volatile int lpm_prevent_sleep = 0;
+volatile int lpm_prevent_sleep = 1;
 
 extern int main(void);
 static void *main_trampoline(void *arg)
@@ -71,12 +71,10 @@ static void *idle_thread(void *arg)
 
     while (1) {
         if (lpm_prevent_sleep) {
-            lpm_set(LPM_IDLE);
+            lpm_set(LPM_POWERDOWN);
         }
         else {
-            lpm_set(LPM_IDLE);
-            /* lpm_set(LPM_SLEEP); */
-            /* lpm_set(LPM_POWERDOWN); */
+            lpm_set(LPM_OFF);
         }
     }
 
