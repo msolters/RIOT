@@ -626,11 +626,6 @@ static void *_lwmac_thread(void *args)
             gnrc_pktsnip_t* pkt = (gnrc_pktsnip_t*) msg.content.ptr;
 
             // TODO: how to announce failure to upper layers?
-            if(packet_queue_length(&lwmac.tx.queue) >= LWMAC_TX_QUEUE_SIZE) {
-                LOG_ERROR("tx queue is full, rejecting packet\n");
-                gnrc_pktbuf_release(pkt);
-                break;
-            }
             if(packet_queue_push(&lwmac.tx.queue, pkt, 0) == NULL) {
                 LOG_ERROR("Can't push to tx queue, memory full?\n");
                 gnrc_pktbuf_release(pkt);

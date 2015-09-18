@@ -18,8 +18,40 @@
  */
 
 #include "net/gnrc.h"
+#include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc/lwmac/packet_queue.h"
 #include "panic.h"
+
+
+static priority_queue_node_t _packet_queue_nodes[LWMAC_TX_QUEUE_SIZE];
+
+/******************************************************************************/
+
+static priority_queue_node_t* _alloc_node(gnrc_pktsnip_t *pkt)
+{
+    assert(sizeof(unsigned int) == sizeof(gnrc_pktsnip_t*));
+
+    for (size_t i = 0; i < sizeof(_packet_queue_nodes) / sizeof(priority_queue_node_t); i++) {
+        if( (_packet_queue_nodes[i].data == 0) &&
+            (_packet_queue_nodes[i].next == NULL))
+        {
+            _packet_queue_nodes[i].data = (unsigned int) pkt;
+            return &(_packet_queue_nodes[i]);
+        }
+    }
+
+    return NULL;
+}
+
+/******************************************************************************/
+
+static inline void _free_node(priority_queue_node_t *node)
+{
+    if(node) {
+        node->data = 0;
+        node->next = NULL;
+    }
+}
 
 /******************************************************************************/
 
@@ -29,7 +61,7 @@ gnrc_pktsnip_t* packet_queue_pop(packet_queue_t* q)
         return NULL;
     priority_queue_node_t* head = priority_queue_remove_head(&(q->queue));
     gnrc_pktsnip_t* pkt = (gnrc_pktsnip_t*) head->data;
-    free(head);
+    _free_node(head);
     q->length--;
     return pkt;
 }
@@ -47,19 +79,14 @@ gnrc_pktsnip_t* packet_queue_head(packet_queue_t* q)
 priority_queue_node_t*
 packet_queue_push(packet_queue_t* q, gnrc_pktsnip_t* snip, uint32_t priority)
 {
-    assert(sizeof(unsigned int) == sizeof(gnrc_pktsnip_t*));
-
     if(!q || !snip)
         return NULL;
 
-    priority_queue_node_t* node = malloc(sizeof(priority_queue_node_t));
+    priority_queue_node_t* node = _alloc_node(snip);
 
     if(node)
     {
-        *node = (priority_queue_node_t) PRIORITY_QUEUE_NODE_INIT;
-        node->data = (unsigned int) snip;
         node->priority = priority;
-
         priority_queue_add(&(q->queue), node);
         q->length++;
     }
@@ -77,7 +104,7 @@ void packet_queue_flush(packet_queue_t* q)
     while( (node = priority_queue_remove_head(&(q->queue))) )
     {
         gnrc_pktbuf_release((gnrc_pktsnip_t*) node->data);
-        free(node);
+        _free_node(node);
     }
     q->length = 0;
 }
