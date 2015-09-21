@@ -98,7 +98,7 @@ void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type)
 
 /******************************************************************************/
 
-static int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len)
+int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len)
 {
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(queues[i].addr_len == addr_len) {
@@ -113,7 +113,7 @@ static int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, i
 /******************************************************************************/
 
 /* Free first empty queue */
-static int _free_neighbour_queue(lwmac_tx_queue_t queues[])
+int _free_neighbour_queue(lwmac_tx_queue_t queues[])
 {
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(packet_queue_length(&(queues[i].queue)) == 0) {
@@ -126,7 +126,7 @@ static int _free_neighbour_queue(lwmac_tx_queue_t queues[])
 
 /******************************************************************************/
 
-static int _alloc_neighbour_queue(lwmac_tx_queue_t queues[])
+int _alloc_neighbour_queue(lwmac_tx_queue_t queues[])
 {
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(queues[i].addr_len == 0) {
@@ -157,6 +157,7 @@ static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     uint8_t* addr;
     int addr_len;
     int neighbour_id;
+    bool queue_existed = true;
 
     lwmac_tx_queue_t* queues = lwmac->tx.queues;
 
@@ -176,6 +177,8 @@ static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
         /* Try to allocate queue */
         neighbour_id = _alloc_neighbour_queue(queues);
 
+        queue_existed = false;
+
         /* No queues left */
         if(neighbour_id < 0) {
             /* Try to free an unused queue */
@@ -194,6 +197,13 @@ static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
         LOG_ERROR("Can't push to tx queue, no entries left\n");
         gnrc_pktbuf_release(pkt);
         return false;
+    }
+
+    if(!queue_existed) {
+        /* Setup new queue */
+        queues[neighbour_id].addr_len = addr_len;
+        queues[neighbour_id].phase = LWMAC_PHASE_UNINITIALIZED;
+        memcpy(&(queues[neighbour_id].addr), addr, addr_len);
     }
 
     return true;

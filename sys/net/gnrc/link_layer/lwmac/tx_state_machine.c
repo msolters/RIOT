@@ -16,6 +16,7 @@
  * @}
  */
 
+#include "periph/rtt.h"
 #include "net/gnrc.h"
 #include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc/lwmac/tx_state_machine.h"
@@ -151,6 +152,10 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
         }
 
+        /* Save timestamp in case this WR reaches the destination node so that
+         * we know it's wakeup phase relative to ours for the next time */
+        lwmac->tx.timestamp = rtt_get_counter();
+
         /* Send WR */
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
 
@@ -205,6 +210,39 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         if(!found_wa) {
             LOG_DEBUG("No WA yet\n");
             break;
+        }
+
+        /* WA arrived at destination, so calculate destination wakeup phase
+         * based on the timestamp of the WR we sent
+         */
+        gnrc_netif_hdr_t* netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
+        if(netif_hdr) {
+            int id;
+            id = _find_neighbour_queue(lwmac->tx.queues,
+                                       gnrc_netif_hdr_get_src_addr(netif_hdr),
+                                       netif_hdr->src_l2addr_len);
+            if(id >= 0) {
+                /* Calculate phase */
+                uint32_t new_phase;
+                /* Relative to last wakeup */
+                new_phase = lwmac->tx.timestamp - lwmac->last_wakeup;
+
+                /* In sending WRs took longer than one interval */
+                new_phase %= RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
+
+                /* If the phase was known before only update if smaller */
+                if( (lwmac->tx.queues[id].phase == LWMAC_PHASE_UNINITIALIZED) ||
+                    (new_phase < lwmac->tx.queues[id].phase) ) {
+                    lwmac->tx.queues[id].phase = new_phase;
+                    LOG_INFO("New phase: %"PRIu32"\n", new_phase);
+                } else {
+                    LOG_INFO("Phase didn't change\n");
+                }
+            } else {
+                LOG_WARNING("Queue for destination has already been freed\n");
+            }
+        } else {
+            LOG_WARNING("WA corrupted after acceptation\n");
         }
 
         /* We don't need the packet anymore */

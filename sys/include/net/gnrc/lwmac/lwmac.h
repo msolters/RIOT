@@ -189,6 +189,8 @@ typedef struct {
     uint32_t phase;
 } lwmac_tx_queue_t;
 
+#define LWMAC_PHASE_UNINITIALIZED -1
+
 /******************************************************************************/
 
 typedef struct {
@@ -203,7 +205,7 @@ typedef struct {
 
 #define LWMAC_TX_INIT { \
 /* tx::state */         LWMAC_TX_STATE_INIT, \
-/* tx::queue */         {}, \
+/* tx::queues */        {}, \
 /* tx::wr_sent */       0, \
 /* tx::packet */        NULL, \
 /* tx::timestamp */     0 \
@@ -327,6 +329,11 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
  * @return                      state of netdev
  */
 netopt_state_t _get_netdev_state(lwmac_t* lwmac);
+
+
+int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len);
+int _free_neighbour_queue(lwmac_tx_queue_t queues[]);
+int _alloc_neighbour_queue(lwmac_tx_queue_t queues[]);
 
 #ifdef __cplusplus
 }
