@@ -49,6 +49,13 @@ extern "C" {
 #endif
 
 /**
+ * @brief   Count of nodes in one-hop distance whose wakeup phase is tracked
+ */
+#ifndef LWMAC_NEIGHBOUR_COUNT
+#define LWMAC_NEIGHBOUR_COUNT           (8U)
+#endif
+
+/**
  * @brief   Set the default queue size for packets coming from higher layers
  */
 #ifndef LWMAC_TX_QUEUE_SIZE
@@ -80,6 +87,8 @@ extern "C" {
 #define LWMAC_EVENT_RTT_SLEEP_PENDING   (0x4306)
 #define LWMAC_EVENT_TIMEOUT_TYPE        (0x4400)
 
+/******************************************************************************/
+
 typedef enum {
     UNDEF = -1,
     STOPPED,
@@ -93,6 +102,8 @@ typedef enum {
     STATE_COUNT
 } lwmac_state_t;
 
+/******************************************************************************/
+
 typedef enum {
     TX_STATE_STOPPED = 0,
     TX_STATE_INIT,          /**< Initiate transmission */
@@ -105,6 +116,8 @@ typedef enum {
 } lwmac_tx_state_t;
 #define LWMAC_TX_STATE_INIT TX_STATE_STOPPED
 
+/******************************************************************************/
+
 typedef enum {
     RX_STATE_STOPPED = 0,
     RX_STATE_INIT,          /**< Initiate reception */
@@ -116,6 +129,8 @@ typedef enum {
 } lwmac_rx_state_t;
 #define LWMAC_RX_STATE_INIT RX_STATE_STOPPED
 
+/******************************************************************************/
+
 typedef enum {
     TIMEOUT_DISABLED = 0,
     TIMEOUT_WR,
@@ -123,6 +138,8 @@ typedef enum {
     TIMEOUT_WA,
     TIMEOUT_DATA
 } lwmac_timeout_type_t;
+
+/******************************************************************************/
 
 typedef struct {
     /* Timer used for timeouts */
@@ -135,12 +152,17 @@ typedef struct {
     lwmac_timeout_type_t type;
 } lwmac_timeout_t;
 
+/******************************************************************************/
+
 typedef enum {
     TX_FEEDBACK_UNDEF = -1,
     TX_FEEDBACK_SUCCESS,
     TX_FEEDBACK_NOACK,
     TX_FEEDBACK_BUSY
 } lwmac_tx_feedback_t;
+#define LWMAC_TX_FEEDBACK_INIT TX_FEEDBACK_UNDEF
+
+/******************************************************************************/
 
 typedef struct {
     /* Internal state of reception state machine */
@@ -149,15 +171,45 @@ typedef struct {
     gnrc_pktsnip_t* packet;
 } lwmac_rx_t;
 
+#define LWMAC_RX_INIT { \
+/* rx::state */         LWMAC_RX_STATE_INIT, \
+/* rx::queue */         {}, \
+/* rx::packet */        NULL \
+}
+
+/******************************************************************************/
+
+typedef struct {
+    /* Address of neighbour node */
+    uint64_t addr;
+    unsigned int addr_len;
+    /* TX queue for this particular node */
+    packet_queue_t queue;
+    /* Phase relative to lwmac::last_wakeup */
+    uint32_t phase;
+} lwmac_tx_queue_t;
+
+/******************************************************************************/
+
 typedef struct {
     /* Internal state of transmission state machine */
     lwmac_tx_state_t state;
-    packet_queue_t queue;
+    lwmac_tx_queue_t queues[LWMAC_NEIGHBOUR_COUNT];
     uint32_t wr_sent;
     /* Packet that is currently scheduled to be sent */
     gnrc_pktsnip_t* packet;
+    uint32_t timestamp;
 } lwmac_tx_t;
 
+#define LWMAC_TX_INIT { \
+/* tx::state */         LWMAC_TX_STATE_INIT, \
+/* tx::queue */         {}, \
+/* tx::wr_sent */       0, \
+/* tx::packet */        NULL, \
+/* tx::timestamp */     0 \
+}
+
+/******************************************************************************/
 
 typedef struct {
     /* PID of lwMAC thread */
@@ -191,14 +243,9 @@ typedef struct {
 /* rx_in_progress */        false, \
 /* addr */                  0, \
 /* addr_len */              0, \
-/* rx::state */             { LWMAC_RX_STATE_INIT, \
-/* rx::queue */               {}, \
-/* rx::packet */              NULL }, \
-/* tx::state */             { LWMAC_TX_STATE_INIT, \
-/* tx::queue */               {}, \
-/* tx::wr_sent */             0, \
-/* tx::packet */              NULL }, \
-/* tx_feedback */           TX_FEEDBACK_UNDEF, \
+/* rx */                    LWMAC_RX_INIT, \
+/* tx */                    LWMAC_TX_INIT, \
+/* tx_feedback */           LWMAC_TX_FEEDBACK_INIT, \
 /* timeouts */              {}, \
 /* last_wakeup */           0, \
 /* needs_rescheduling */    false \

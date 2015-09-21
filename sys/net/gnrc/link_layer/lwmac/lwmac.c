@@ -54,6 +54,7 @@
 /* Internal state of lwMAC */
 static lwmac_t lwmac = LWMAC_INIT;
 
+
 /******************************************************************************/
 
 static bool lwmac_update(void);
@@ -67,16 +68,16 @@ static void rtt_handler(uint32_t event);
 int _get_dest_address(gnrc_pktsnip_t* pkt, uint8_t* pointer_to_addr[])
 {
     int res;
-    gnrc_netif_hdr_t* hdr;
+    gnrc_netif_hdr_t* netif_hdr;
 
     if(!pkt)
         return -ENODEV;
 
-    hdr = (gnrc_netif_hdr_t*) pkt->data;
-    if( (res = hdr->dst_l2addr_len) <= 0)
+    netif_hdr = (gnrc_netif_hdr_t*) pkt->data;
+    if( (res = netif_hdr->dst_l2addr_len) <= 0)
         return -ENOENT;
 
-    *pointer_to_addr = gnrc_netif_hdr_get_dst_addr(hdr);
+    *pointer_to_addr = gnrc_netif_hdr_get_dst_addr(netif_hdr);
     return res;
 }
 
@@ -93,6 +94,109 @@ void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type)
         pkt = pkt->next;
     }
     return NULL;
+}
+
+/******************************************************************************/
+
+static int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len)
+{
+    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
+        if(queues[i].addr_len == addr_len) {
+            if(memcmp(&(queues[i].addr), dst_addr, addr_len) == 0) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+/******************************************************************************/
+
+/* Free first empty queue */
+static int _free_neighbour_queue(lwmac_tx_queue_t queues[])
+{
+    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
+        if(packet_queue_length(&(queues[i].queue)) == 0) {
+            queues[i].addr_len = 0;
+            return i;
+        }
+    }
+    return -1;
+}
+
+/******************************************************************************/
+
+static int _alloc_neighbour_queue(lwmac_tx_queue_t queues[])
+{
+    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
+        if(queues[i].addr_len == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/******************************************************************************/
+
+/* Find the neighbour that has a packet queued and is next for sending */
+static int _next_tx_neighbour(lwmac_tx_queue_t queues[])
+{
+    /* For now just get the first packet that can be found */
+    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
+        if(packet_queue_length(&(queues[i].queue))) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/******************************************************************************/
+
+static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
+{
+    uint8_t* addr;
+    int addr_len;
+    int neighbour_id;
+
+    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+
+    /* Get destination address of packet */
+    addr_len = _get_dest_address(pkt, &addr);
+    if(addr_len <= 0) {
+        LOG_ERROR("Packet has no destination address\n");
+        gnrc_pktbuf_release(pkt);
+        return false;
+    }
+
+    /* Search for existing queue for destination */
+    neighbour_id = _find_neighbour_queue(queues, addr, addr_len);
+
+    /* Neighbour node doesn't have a queue yet */
+    if(neighbour_id < 0) {
+        /* Try to allocate queue */
+        neighbour_id = _alloc_neighbour_queue(queues);
+
+        /* No queues left */
+        if(neighbour_id < 0) {
+            /* Try to free an unused queue */
+            neighbour_id = _free_neighbour_queue(queues);
+
+            /* All queues are in use, so reject */
+            if(neighbour_id < 0) {
+                LOG_ERROR("Couldn't allocate tx queue for packet\n");
+                gnrc_pktbuf_release(pkt);
+                return false;
+            }
+        }
+    }
+
+    if(packet_queue_push(&(queues[neighbour_id].queue), pkt, 0) == NULL) {
+        LOG_ERROR("Can't push to tx queue, no entries left\n");
+        gnrc_pktbuf_release(pkt);
+        return false;
+    }
+
+    return true;
 }
 
 /******************************************************************************/
@@ -307,7 +411,7 @@ bool lwmac_update(void)
     switch(lwmac.state)
     {
     case SLEEPING:
-        if(packet_queue_length(&lwmac.tx.queue) > 0) {
+        if(_next_tx_neighbour(lwmac.tx.queues) >= 0) {
             lwmac_set_state(TRANSMITTING);
         }
         break;
@@ -358,10 +462,11 @@ bool lwmac_update(void)
         {
         case TX_STATE_STOPPED:
         {
-            gnrc_pktsnip_t* pkt;
+            gnrc_pktsnip_t* pkt = NULL;
 
-            /* Check if there is something to send */
-            if( (pkt = packet_queue_pop(&lwmac.tx.queue)) )
+            int neighbour_id = _next_tx_neighbour(lwmac.tx.queues);
+
+            if( (pkt = packet_queue_pop(&(lwmac.tx.queues[neighbour_id].queue))) )
             {
                 lwmac_tx_start(&lwmac, pkt);
                 lwmac_tx_update(&lwmac);
@@ -621,16 +726,13 @@ static void *_lwmac_thread(void *args)
         /* TX: Queue for sending */
         case GNRC_NETAPI_MSG_TYPE_SND:
         {
-            LOG_DEBUG("GNRC_NETAPI_MSG_TYPE_SND received\n");
+            // TODO: how to announce failure to upper layers?
 
+            LOG_DEBUG("GNRC_NETAPI_MSG_TYPE_SND received\n");
             gnrc_pktsnip_t* pkt = (gnrc_pktsnip_t*) msg.content.ptr;
 
-            // TODO: how to announce failure to upper layers?
-            if(packet_queue_push(&lwmac.tx.queue, pkt, 0) == NULL) {
-                LOG_ERROR("Can't push to tx queue, memory full?\n");
-                gnrc_pktbuf_release(pkt);
-                break;
-            }
+            _queue_tx_packet(&lwmac, pkt);
+
             lwmac_schedule_update();
             break;
         }
