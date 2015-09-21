@@ -98,8 +98,10 @@ void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type)
 
 /******************************************************************************/
 
-int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len)
+int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
 {
+    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(queues[i].addr_len == addr_len) {
             if(memcmp(&(queues[i].addr), dst_addr, addr_len) == 0) {
@@ -112,11 +114,15 @@ int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr
 
 /******************************************************************************/
 
-/* Free first empty queue */
-int _free_neighbour_queue(lwmac_tx_queue_t queues[])
+/* Free first empty queue that is not active */
+int _free_neighbour_queue(lwmac_t* lwmac)
 {
+    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(packet_queue_length(&(queues[i].queue)) == 0) {
+        if( (packet_queue_length(&(queues[i].queue)) == 0) &&
+            (&queues[i] != lwmac->tx.current_queue) ) {
+            /* Mark as free */
             queues[i].addr_len = 0;
             return i;
         }
@@ -126,8 +132,10 @@ int _free_neighbour_queue(lwmac_tx_queue_t queues[])
 
 /******************************************************************************/
 
-int _alloc_neighbour_queue(lwmac_tx_queue_t queues[])
+int _alloc_neighbour_queue(lwmac_t* lwmac)
 {
+    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(queues[i].addr_len == 0) {
             return i;
@@ -170,19 +178,19 @@ static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     }
 
     /* Search for existing queue for destination */
-    neighbour_id = _find_neighbour_queue(queues, addr, addr_len);
+    neighbour_id = _find_neighbour_queue(lwmac, addr, addr_len);
 
     /* Neighbour node doesn't have a queue yet */
     if(neighbour_id < 0) {
         /* Try to allocate queue */
-        neighbour_id = _alloc_neighbour_queue(queues);
+        neighbour_id = _alloc_neighbour_queue(lwmac);
 
         queue_existed = false;
 
         /* No queues left */
         if(neighbour_id < 0) {
             /* Try to free an unused queue */
-            neighbour_id = _free_neighbour_queue(queues);
+            neighbour_id = _free_neighbour_queue(lwmac);
 
             /* All queues are in use, so reject */
             if(neighbour_id < 0) {
@@ -475,10 +483,11 @@ bool lwmac_update(void)
             gnrc_pktsnip_t* pkt = NULL;
 
             int neighbour_id = _next_tx_neighbour(lwmac.tx.queues);
+            lwmac_tx_queue_t* tx_queue = &(lwmac.tx.queues[neighbour_id]);
 
-            if( (pkt = packet_queue_pop(&(lwmac.tx.queues[neighbour_id].queue))) )
+            if( (pkt = packet_queue_pop(&tx_queue->queue)) )
             {
-                lwmac_tx_start(&lwmac, pkt);
+                lwmac_tx_start(&lwmac, pkt, tx_queue);
                 lwmac_tx_update(&lwmac);
             } else {
                 LOG_WARNING("In 'TRANSMITTING' but tx.queue is empty\n");

@@ -47,10 +47,11 @@
 
 /******************************************************************************/
 
-void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt)
+void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_queue_t* queue)
 {
     assert(lwmac != NULL);
     assert(pkt != NULL);
+    assert(queue != NULL);
 
     if(lwmac->tx.packet) {
         LOG_WARNING("Starting but tx.packet is still set\n");
@@ -58,6 +59,7 @@ void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt)
     }
 
     lwmac->tx.packet = pkt;
+    lwmac->tx.current_queue = queue;
     lwmac->tx.state = TX_STATE_INIT;
     lwmac->tx.wr_sent = 0;
 }
@@ -75,6 +77,7 @@ void lwmac_tx_stop(lwmac_t* lwmac)
     /* Release packet in case of failure */
     gnrc_pktbuf_release(lwmac->tx.packet);
     lwmac->tx.packet = NULL;
+    lwmac->tx.current_queue = NULL;
 }
 
 /******************************************************************************/
@@ -215,34 +218,21 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* WA arrived at destination, so calculate destination wakeup phase
          * based on the timestamp of the WR we sent
          */
-        gnrc_netif_hdr_t* netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
-        if(netif_hdr) {
-            int id;
-            id = _find_neighbour_queue(lwmac->tx.queues,
-                                       gnrc_netif_hdr_get_src_addr(netif_hdr),
-                                       netif_hdr->src_l2addr_len);
-            if(id >= 0) {
-                /* Calculate phase */
-                uint32_t new_phase;
-                /* Relative to last wakeup */
-                new_phase = lwmac->tx.timestamp - lwmac->last_wakeup;
+        /* Relative to last wakeup */
+         uint32_t new_phase = lwmac->tx.timestamp - lwmac->last_wakeup;
 
-                /* In sending WRs took longer than one interval */
-                new_phase %= RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
+        /* If sending WRs took longer than one wakeup interval */
+        new_phase %= RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
 
-                /* If the phase was known before only update if smaller */
-                if( (lwmac->tx.queues[id].phase == LWMAC_PHASE_UNINITIALIZED) ||
-                    (new_phase < lwmac->tx.queues[id].phase) ) {
-                    lwmac->tx.queues[id].phase = new_phase;
-                    LOG_INFO("New phase: %"PRIu32"\n", new_phase);
-                } else {
-                    LOG_INFO("Phase didn't change\n");
-                }
-            } else {
-                LOG_WARNING("Queue for destination has already been freed\n");
-            }
+        /* If the phase was known before only update if smaller
+         * TODO: check if this is always a good idea
+         */
+        if( (lwmac->tx.current_queue->phase == LWMAC_PHASE_UNINITIALIZED) ||
+            (new_phase < lwmac->tx.current_queue->phase) ) {
+            lwmac->tx.current_queue->phase = new_phase;
+            LOG_INFO("New phase: %"PRIu32"\n", new_phase);
         } else {
-            LOG_WARNING("WA corrupted after acceptation\n");
+            LOG_INFO("Phase didn't change\n");
         }
 
         /* We don't need the packet anymore */

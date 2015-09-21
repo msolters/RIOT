@@ -200,6 +200,8 @@ typedef struct {
     uint32_t wr_sent;
     /* Packet that is currently scheduled to be sent */
     gnrc_pktsnip_t* packet;
+    /* Queue of destination node to which the current packet will be sent */
+    lwmac_tx_queue_t* current_queue;
     uint32_t timestamp;
 } lwmac_tx_t;
 
@@ -208,6 +210,7 @@ typedef struct {
 /* tx::queues */        {}, \
 /* tx::wr_sent */       0, \
 /* tx::packet */        NULL, \
+/* tx::current_queue */ NULL, \
 /* tx::timestamp */     0 \
 }
 
@@ -331,9 +334,9 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
 netopt_state_t _get_netdev_state(lwmac_t* lwmac);
 
 
-int _find_neighbour_queue(lwmac_tx_queue_t queues[], uint8_t* dst_addr, int addr_len);
-int _free_neighbour_queue(lwmac_tx_queue_t queues[]);
-int _alloc_neighbour_queue(lwmac_tx_queue_t queues[]);
+int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
+int _free_neighbour_queue(lwmac_t* lwmac);
+int _alloc_neighbour_queue(lwmac_t* lwmac);
 
 #ifdef __cplusplus
 }

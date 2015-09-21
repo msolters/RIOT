@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt);
+void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_queue_t* queue);
 
 void lwmac_tx_stop(lwmac_t* lwmac);
 
