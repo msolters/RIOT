@@ -333,6 +333,13 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
  */
 netopt_state_t _get_netdev_state(lwmac_t* lwmac);
 
+/* @brief Shortcut to set the state of netdev
+ *
+ * @param[in]   lwmac           lwmac state that stores netdev pointer
+ * @param[in]   devstate        new state for netdev
+ */
+void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
+
 
 int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
 int _free_neighbour_queue(lwmac_t* lwmac);

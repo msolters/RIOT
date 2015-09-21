@@ -264,12 +264,12 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
 /******************************************************************************/
 
 // TODO: Don't use global variables
-static inline void set_netdev_state(netopt_state_t devstate)
+void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate)
 {
-    lwmac.netdev->driver->set(lwmac.netdev,
-                              NETOPT_STATE,
-                              &devstate,
-                              sizeof(devstate));
+    lwmac->netdev->driver->set(lwmac->netdev,
+                               NETOPT_STATE,
+                               &devstate,
+                               sizeof(devstate));
 }
 
 /******************************************************************************/
@@ -368,28 +368,28 @@ void lwmac_set_state(lwmac_state_t newstate)
     {
     /*********************** Operation states *********************************/
     case LISTENING:
-        set_netdev_state(NETOPT_STATE_IDLE);
+        _set_netdev_state(&lwmac, NETOPT_STATE_IDLE);
         break;
 
     case SLEEPING:
         /* Put transceiver to sleep */
-        set_netdev_state(NETOPT_STATE_SLEEP);
+        _set_netdev_state(&lwmac, NETOPT_STATE_SLEEP);
         break;
 
     /* Trying to send data */
     case TRANSMITTING:
         rtt_handler(LWMAC_EVENT_RTT_PAUSE); /* No duty cycling while RXing */
-        set_netdev_state(NETOPT_STATE_IDLE);  /* Power up netdev */
+        _set_netdev_state(&lwmac, NETOPT_STATE_IDLE);  /* Power up netdev */
         break;
 
     /* Receiving incoming data */
     case RECEIVING:
         rtt_handler(LWMAC_EVENT_RTT_PAUSE); /* No duty cycling while TXing */
-        set_netdev_state(NETOPT_STATE_IDLE);  /* Power up netdev */
+        _set_netdev_state(&lwmac, NETOPT_STATE_IDLE);  /* Power up netdev */
         break;
 
     case STOPPED:
-        set_netdev_state(NETOPT_STATE_OFF);
+        _set_netdev_state(&lwmac, NETOPT_STATE_OFF);
         break;
 
     /*********************** Control states ***********************************/
