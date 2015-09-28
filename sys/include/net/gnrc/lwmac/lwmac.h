@@ -63,11 +63,11 @@ extern "C" {
 #endif
 
 #ifndef LWMAC_WAKEUP_INTERVAL_MS
-#define LWMAC_WAKEUP_INTERVAL_MS        (100U)          /* 100 ms */
+#define LWMAC_WAKEUP_INTERVAL_MS        (100U)
 #endif
 
 #ifndef LWMAC_TIME_BETWEEN_WR_US
-#define LWMAC_TIME_BETWEEN_WR_US        (7000U)         /* 5000 us */
+#define LWMAC_TIME_BETWEEN_WR_US        (7000U)
 #endif
 
 #ifndef LWMAC_WAKEUP_DURATION_MS

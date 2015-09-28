@@ -55,7 +55,6 @@
 /* Internal state of lwMAC */
 static lwmac_t lwmac = LWMAC_INIT;
 
-
 /******************************************************************************/
 
 static bool lwmac_update(void);
@@ -97,8 +96,6 @@ void lwmac_set_state(lwmac_state_t newstate)
 
     /* Already change state, but might be reverted to oldstate when needed */
     lwmac.state = newstate;
-
-    LOG_DEBUG("State transition from %u to %u\n", oldstate, newstate);
 
     /* Actions when leaving old state */
     switch(oldstate)
@@ -249,7 +246,7 @@ bool lwmac_update(void)
         /* If state has changed, reschedule main state machine */
         if(state_rx != lwmac.rx.state)
         {
-            lwmac.needs_rescheduling = true;
+            lwmac_schedule_update();
         }
         break;
     }
@@ -328,7 +325,6 @@ void rtt_handler(uint32_t event)
         lwmac.last_wakeup = rtt_get_alarm();
         alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_DURATION_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
-        LOG_DEBUG("RTT: Wakeup, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
         lpm_prevent_sleep = 1;
         lwmac_set_state(LISTENING);
         break;
@@ -336,7 +332,6 @@ void rtt_handler(uint32_t event)
     case LWMAC_EVENT_RTT_SLEEP_PENDING:
         alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
-        LOG_DEBUG("RTT: Sleeping now, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
         lwmac_set_state(SLEEPING);
         lpm_prevent_sleep = 0;
         break;
@@ -499,10 +494,7 @@ static void *_lwmac_thread(void *args)
     /* start the event loop */
     while (1) {
 
-        LOG_DEBUG("Waiting for incoming messages\n");
         msg_receive(&msg);
-
-        LOG_DEBUG("Got msg of type %p\n", (void*)((uint32_t)msg.type));
 
         /* Handle NETDEV, NETAPI, RTT and TIMEOUT messages */
         switch (msg.type) {
@@ -513,6 +505,7 @@ static void *_lwmac_thread(void *args)
             lwmac_schedule_update();
             break;
 
+        /* An lwmac timeout occured */
         case LWMAC_EVENT_TIMEOUT_TYPE:
         {
             LOG_DEBUG("LWMAC_EVENT_VTIMER_TYPE\n");
