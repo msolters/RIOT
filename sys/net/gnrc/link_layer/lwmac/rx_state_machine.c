@@ -209,16 +209,6 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         bool found_data = false;
         bool found_wr = false;
 
-        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
-            LOG_WARNING("Receiving, so wait a moment\n");
-            break;
-        }
-
-        if(lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) {
-            LOG_ERROR("DATA timed out\n");
-            GOTO_RX_STATE(RX_STATE_FAILED, true);
-        }
-
         while( (pkt = packet_queue_pop(&lwmac->rx.queue)) != NULL ) {
             LOG_DEBUG("Inspecting pkt @ %p\n", pkt);
 
@@ -241,11 +231,20 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             gnrc_pktbuf_release(pkt);
         }
 
+        /* If WA got lost we wait for data but we will be hammered with WR
+         * packets. So a WR indicates a lost WA => reset RX state machine
+         */
         if(found_wr) {
+            LOG_INFO("WA probably got lost, reset RX state machine\n");
             /* Push WR back to rx queue */
             packet_queue_push(&lwmac->rx.queue, pkt, 0);
             /* Start over again */
             GOTO_RX_STATE(RX_STATE_INIT, true);
+        }
+
+        if(lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) {
+            LOG_ERROR("DATA timed out\n");
+            GOTO_RX_STATE(RX_STATE_FAILED, true);
         }
 
         if(!found_data) {
