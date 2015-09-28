@@ -21,6 +21,7 @@
 #include "net/gnrc/lwmac/rx_state_machine.h"
 #include "net/gnrc/lwmac/timeout.h"
 #include "net/gnrc/lwmac/packet_queue.h"
+#include "include/lwmac_internal.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"

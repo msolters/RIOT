@@ -32,6 +32,7 @@
 #include "net/gnrc/lwmac/timeout.h"
 #include "net/gnrc/lwmac/tx_state_machine.h"
 #include "net/gnrc/lwmac/rx_state_machine.h"
+#include "include/lwmac_internal.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
@@ -62,257 +63,6 @@ static void lwmac_set_state(lwmac_state_t newstate);
 static void lwmac_schedule_update(void);
 static bool lwmac_needs_update(void);
 static void rtt_handler(uint32_t event);
-
-/******************************************************************************/
-
-int _get_dest_address(gnrc_pktsnip_t* pkt, uint8_t* pointer_to_addr[])
-{
-    int res;
-    gnrc_netif_hdr_t* netif_hdr;
-
-    if(!pkt)
-        return -ENODEV;
-
-    netif_hdr = (gnrc_netif_hdr_t*) pkt->data;
-    if( (res = netif_hdr->dst_l2addr_len) <= 0)
-        return -ENOENT;
-
-    *pointer_to_addr = gnrc_netif_hdr_get_dst_addr(netif_hdr);
-    return res;
-}
-
-/******************************************************************************/
-
-/* Find a payload based on it's protocol type */
-void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type)
-{
-    while(pkt != NULL)
-    {
-        if(pkt->type == type) {
-            return pkt->data;
-        }
-        pkt = pkt->next;
-    }
-    return NULL;
-}
-
-/******************************************************************************/
-
-int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
-{
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
-
-    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(queues[i].addr_len == addr_len) {
-            if(memcmp(&(queues[i].addr), dst_addr, addr_len) == 0) {
-                return i;
-            }
-        }
-    }
-    return -1;
-}
-
-/******************************************************************************/
-
-/* Free first empty queue that is not active */
-int _free_neighbour_queue(lwmac_t* lwmac)
-{
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
-
-    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if( (packet_queue_length(&(queues[i].queue)) == 0) &&
-            (&queues[i] != lwmac->tx.current_queue) ) {
-            /* Mark as free */
-            queues[i].addr_len = 0;
-            return i;
-        }
-    }
-    return -1;
-}
-
-/******************************************************************************/
-
-int _alloc_neighbour_queue(lwmac_t* lwmac)
-{
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
-
-    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(queues[i].addr_len == 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-/******************************************************************************/
-
-/* Find the neighbour that has a packet queued and is next for sending */
-static int _next_tx_neighbour(lwmac_tx_queue_t queues[])
-{
-    /* For now just get the first packet that can be found */
-    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(packet_queue_length(&(queues[i].queue))) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-/******************************************************************************/
-
-static bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
-{
-    uint8_t* addr;
-    int addr_len;
-    int neighbour_id;
-    bool queue_existed = true;
-
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
-
-    /* Get destination address of packet */
-    addr_len = _get_dest_address(pkt, &addr);
-    if(addr_len <= 0) {
-        LOG_ERROR("Packet has no destination address\n");
-        gnrc_pktbuf_release(pkt);
-        return false;
-    }
-
-    /* Search for existing queue for destination */
-    neighbour_id = _find_neighbour_queue(lwmac, addr, addr_len);
-
-    /* Neighbour node doesn't have a queue yet */
-    if(neighbour_id < 0) {
-        /* Try to allocate queue */
-        neighbour_id = _alloc_neighbour_queue(lwmac);
-
-        queue_existed = false;
-
-        /* No queues left */
-        if(neighbour_id < 0) {
-            /* Try to free an unused queue */
-            neighbour_id = _free_neighbour_queue(lwmac);
-
-            /* All queues are in use, so reject */
-            if(neighbour_id < 0) {
-                LOG_ERROR("Couldn't allocate tx queue for packet\n");
-                gnrc_pktbuf_release(pkt);
-                return false;
-            }
-        }
-    }
-
-    if(packet_queue_push(&(queues[neighbour_id].queue), pkt, 0) == NULL) {
-        LOG_ERROR("Can't push to tx queue, no entries left\n");
-        gnrc_pktbuf_release(pkt);
-        return false;
-    }
-
-    if(!queue_existed) {
-        /* Setup new queue */
-        queues[neighbour_id].addr_len = addr_len;
-        queues[neighbour_id].phase = LWMAC_PHASE_UNINITIALIZED;
-        memcpy(&(queues[neighbour_id].addr), addr, addr_len);
-    }
-
-    return true;
-}
-
-/******************************************************************************/
-
-bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac_t* lwmac)
-{
-    gnrc_netif_hdr_t* netif_hdr;
-    lwmac_hdr_t* lwmac_hdr;
-    uint8_t* own_addr = (uint8_t*) &(lwmac->addr);
-    uint8_t* dst_addr;
-
-    netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
-    if(netif_hdr == NULL) {
-        LOG_WARNING("Reject packet: no NETIF header\n");
-        return false;
-    }
-
-    lwmac_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_LWMAC);
-    if(lwmac_hdr == NULL) {
-        LOG_WARNING("Reject packet: no LWMAC header\n");
-        return false;
-    }
-
-    if(lwmac_hdr->type != expected_type) {
-        LOG_WARNING("Reject packet: not of expected type, got 0x%x\n", lwmac_hdr->type);
-        return false;
-    }
-
-    if(netif_hdr->dst_l2addr_len != lwmac->addr_len) {
-        LOG_WARNING("Reject packet: address length mismatch\n");
-        return false;
-    }
-
-    /* TODO: detect broadcast */
-    dst_addr =  gnrc_netif_hdr_get_dst_addr(netif_hdr);
-    if(memcmp(own_addr,dst_addr, lwmac->addr_len) != 0) {
-        LOG_WARNING("Reject packet: not destined to this node\n");
-        LOG_WARNING("Own addr: 0x%x%x, Dest addr: 0x%x%x\n",
-                  own_addr[0], own_addr[1],
-                  dst_addr[0], dst_addr[1]);
-        return false;
-    }
-
-    return true;
-}
-
-/******************************************************************************/
-
-// TODO: Don't use global variables
-void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate)
-{
-    lwmac->netdev->driver->set(lwmac->netdev,
-                               NETOPT_STATE,
-                               &devstate,
-                               sizeof(devstate));
-}
-
-/******************************************************************************/
-
-netopt_state_t _get_netdev_state(lwmac_t* lwmac)
-{
-    netopt_state_t state;
-    if (0 < lwmac->netdev->driver->get(lwmac->netdev,
-                                       NETOPT_STATE,
-                                       &state,
-                                       sizeof(state))) {
-        return state;
-    }
-    return NETOPT_STATE_RESET;
-}
-
-/******************************************************************************/
-
-#define RTT_INPHASE_MARGIN_MS (2)
-// TODO: Don't use global variables
-/* Parameters in rtt timer ticks */
-static uint32_t next_inphase_event(uint32_t last, uint32_t interval)
-{
-    uint32_t counter = rtt_get_counter();
-//    uint32_t wakeup_interval = RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
-
-    /* Counter did overflow since last wakeup */
-    if(counter < last)
-    {
-        uint32_t tmp = -last;
-        tmp /= interval;
-        tmp++;
-        last += tmp * interval;
-    }
-
-    /* Add margin to next wakeup so that it will be at least 2ms in the future */
-    while(last < (counter + RTT_MS_TO_TICKS(RTT_INPHASE_MARGIN_MS)))
-    {
-        last += interval;
-    }
-
-    return last;
-}
 
 /******************************************************************************/
 
@@ -543,7 +293,7 @@ void rtt_handler(uint32_t event)
     {
     case LWMAC_EVENT_RTT_WAKEUP_PENDING:
         lwmac.last_wakeup = rtt_get_alarm();
-        alarm = next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_DURATION_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_DURATION_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
         LOG_DEBUG("RTT: Wakeup, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
         lpm_prevent_sleep = 1;
@@ -551,7 +301,7 @@ void rtt_handler(uint32_t event)
         break;
 
     case LWMAC_EVENT_RTT_SLEEP_PENDING:
-        alarm = next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         LOG_DEBUG("RTT: Sleeping now, set alarm=%"PRIu32", counter=%"PRIu32"\n", alarm, rtt_get_counter());
         lwmac_set_state(SLEEPING);
@@ -575,7 +325,7 @@ void rtt_handler(uint32_t event)
 
     case LWMAC_EVENT_RTT_RESUME:
         LOG_DEBUG("RTT: Resume duty cycling\n");
-        alarm = next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         lpm_prevent_sleep = 0;
         break;

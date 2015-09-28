@@ -289,62 +289,6 @@ typedef struct __attribute__((packed)) {
 kernel_pid_t gnrc_lwmac_init(char *stack, int stacksize, char priority,
                            const char *name, gnrc_netdev_t *dev);
 
-/* @brief Extract the destination address out of an GNRC_NETTYPE_NETIF pktsnip
- *
- * @param[in]   pkt                 pktsnip from whom to extract
- * @param[out]  pointer_to_addr     pointer to address will be stored here
- *
- * @return                          length of destination address
- */
-int _get_dest_address(gnrc_pktsnip_t* pkt, uint8_t* pointer_to_addr[]);
-
-/* @brief Find the first pktsnip of @p type
- *
- * Will search linearly through the packet buffer @p pkt and yield
- * gnrc_pktsnip_t::data of the first pktsnip match the type @p type.
- *
- * @param[in]   pkt     pktsnip that will be searched
- * @param[in]   type    type to search for
- *
- * @return              pointer to data, NULL is not found
- */
-void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type);
-
-/* @brief Check packet if address matches and is of expected type
- *
- * Check if @p pkt type is @p expected_type and then check if destination
- * address matches own address in @p lwmac.
- *
- * TODO: also accept broadcast
- *
- * @param[in]   pkt             packet that will be checked
- * @param[in]   expected_type   required type
- * @param[in]   lwmac           lwmac state that stores own address
- *
- * @return                      whether the packet should be accepted or not
- */
-bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac_t* lwmac);
-
-/* @brief Shortcut to get the state of netdev
- *
- * @param[in]   lwmac           lwmac state that stores netdev pointer
- *
- * @return                      state of netdev
- */
-netopt_state_t _get_netdev_state(lwmac_t* lwmac);
-
-/* @brief Shortcut to set the state of netdev
- *
- * @param[in]   lwmac           lwmac state that stores netdev pointer
- * @param[in]   devstate        new state for netdev
- */
-void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
-
-
-int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
-int _free_neighbour_queue(lwmac_t* lwmac);
-int _alloc_neighbour_queue(lwmac_t* lwmac);
-
 #ifdef __cplusplus
 }
 #endif
