@@ -71,10 +71,10 @@ static void *idle_thread(void *arg)
 
     while (1) {
         if (lpm_prevent_sleep) {
-            lpm_set(LPM_POWERDOWN);
+            lpm_set(LPM_IDLE);
         }
         else {
-            lpm_set(LPM_OFF);
+            lpm_set(LPM_IDLE);
         }
     }
 
