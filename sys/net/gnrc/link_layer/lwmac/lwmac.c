@@ -179,8 +179,40 @@ bool lwmac_update(void)
     switch(lwmac.state)
     {
     case SLEEPING:
-        if(_next_tx_neighbour(lwmac.tx.queues) >= 0) {
-            lwmac_set_state(TRANSMITTING);
+
+        /* If a packet is scheduled, no other (possible earlier) packet can be
+         * sent before the first one is handled
+         */
+        if( !lwmac_timeout_is_running(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP) ) {
+
+            /* Time in microseconds when the earliest (phase) destination node
+             * wakes up that we have packets for. */
+            int time_until_tx = _time_until_tx_us(&lwmac);
+
+            if(time_until_tx > 0) {
+                LOG_INFO("There's something to send!\n");
+
+                /* If there's not enough time to prepare a WR to catch the phase
+                 * postpone to next interval */
+                if (time_until_tx < LWMAC_WR_PREPARATION_US) {
+                    time_until_tx += LWMAC_WAKEUP_INTERVAL_MS * 1000;
+                }
+
+                time_until_tx -= LWMAC_WR_PREPARATION_US;
+
+                timex_t interval = {0, time_until_tx};
+                LOG_INFO("Schedule wakeup in: %"PRIu32" us\n", interval.microseconds);
+                lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, &interval);
+            } else {
+                /* LOG_DEBUG("Nothing to do, why did you get called?\n"); */
+            }
+        } else {
+            if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP)) {
+                LOG_INFO("Got timeout for dest wakeup, ticks: %"PRIu32"\n", rtt_get_counter());
+                lwmac_set_state(TRANSMITTING);
+            } else {
+                LOG_DEBUG("Waiting for TIMEOUT_WAIT_FOR_DEST_WAKEUP\n");
+            }
         }
         break;
 
@@ -253,6 +285,7 @@ bool lwmac_update(void)
                      "(%"PRIu32" WRs)\n",
                      lwmac.tx.packet, tx_success, lwmac.tx.wr_sent);
             lwmac_tx_stop(&lwmac);
+            lwmac_clear_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP);
             lwmac_set_state(SLEEPING);
             break;
         default:
@@ -444,10 +477,14 @@ static void *_lwmac_thread(void *args)
     dev->driver->add_event_callback(dev, _event_cb);
 
     /* Enable RX- and TX-started interrupts  */
-    netopt_enable_t tell_start = NETOPT_ENABLE;
-    dev->driver->set(dev, NETOPT_RX_START_IRQ, &tell_start, sizeof(tell_start));
-    dev->driver->set(dev, NETOPT_TX_START_IRQ, &tell_start, sizeof(tell_start));
-    dev->driver->set(dev, NETOPT_TX_END_IRQ, &tell_start, sizeof(tell_start));
+    netopt_enable_t enable = NETOPT_ENABLE;
+    dev->driver->set(dev, NETOPT_RX_START_IRQ, &enable, sizeof(enable));
+    dev->driver->set(dev, NETOPT_TX_START_IRQ, &enable, sizeof(enable));
+    dev->driver->set(dev, NETOPT_TX_END_IRQ, &enable, sizeof(enable));
+
+    /* Enable preloading, so packet will only be sent when netdev state will be
+     * set to NETOPT_STATE_TX */
+    dev->driver->set(dev, NETOPT_PRELOADING, &enable, sizeof(enable));
 
     /* Get own address from netdev */
     lwmac.addr_len = dev->driver->get(dev, NETOPT_ADDRESS, &lwmac.addr, 8);

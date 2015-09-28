@@ -96,10 +96,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
     {
         lwmac_reset_timeouts(lwmac);
 
-        /* 150% of wakeup interval */
-        timex_t interval = {0, LWMAC_WAKEUP_INTERVAL_MS * 1500};
-        lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
-
         GOTO_TX_STATE(TX_STATE_SEND_WR, true);
     }
     case TX_STATE_SEND_WR:
@@ -110,10 +106,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         gnrc_netif_hdr_t *nethdr;
         uint8_t* dst_addr = NULL;
         int addr_len;
-
-        /* Set timeout for next WR in case no WA will be received */
-        timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
-        lwmac_set_timeout(lwmac, TIMEOUT_WR, &interval);
 
         /* Get destination address */
         addr_len = _get_dest_address(lwmac->tx.packet, &dst_addr);
@@ -155,12 +147,50 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
         }
 
+        /* Prepare WR */
+        lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
+
+        /* First WR, try to catch wakeup phase */
+        if(lwmac->tx.wr_sent == 0) {
+
+            /* Calculate wakeup time */
+            uint32_t wait_until;
+            wait_until  = _phase_to_ticks(lwmac->tx.current_queue->phase);
+            wait_until -= RTT_US_TO_TICKS(LWMAC_WR_BEFORE_PHASE_US);
+
+            /* This output blocks a long time and can prevent correct timing */
+            LOG_DEBUG("Phase length:  %"PRIu32"\n", RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+            LOG_DEBUG("Wait until:    %"PRIu32"\n", wait_until);
+            LOG_DEBUG("     phase:    %"PRIu32"\n", _ticks_to_phase(wait_until));
+            LOG_DEBUG("Ticks to wait: %"PRIu32"\n", (long int)wait_until - rtt_get_counter());
+
+            /* Wait until calculated wakeup time of destination */
+            while(rtt_get_counter() < wait_until);
+        }
+
         /* Save timestamp in case this WR reaches the destination node so that
          * we know it's wakeup phase relative to ours for the next time */
         lwmac->tx.timestamp = rtt_get_counter();
 
-        /* Send WR */
-        lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
+        /* Trigger sending frame */
+        _set_netdev_state(lwmac, NETOPT_STATE_TX);
+
+        /* Set timeout for next WR in case no WA will be received */
+        timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
+        lwmac_set_timeout(lwmac, TIMEOUT_WR, &interval);
+
+        /* Set timeout after sending to get the timing right */
+        if(lwmac->tx.wr_sent == 0) {
+            /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
+            timex_t interval = {0, (LWMAC_WAKEUP_INTERVAL_MS + LWMAC_WAKEUP_DURATION_MS) * 1000};
+            LOG_INFO("Timeout after: %"PRIu32" us\n", interval.microseconds);
+            lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
+        }
+
+        /* Debug WR timing */
+        LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_queue->phase);
+        LOG_DEBUG("Phase when sent was:   %"PRIu32"\n", _ticks_to_phase(lwmac->tx.timestamp));
+        LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", rtt_get_counter());
 
         /* Flush RX queue, TODO: maybe find a way without loosing RX packets */
         packet_queue_flush(&lwmac->rx.queue);
@@ -215,25 +245,15 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             break;
         }
 
-        /* WA arrived at destination, so calculate destination wakeup phase
-         * based on the timestamp of the WR we sent
-         */
-        /* Relative to last wakeup */
-         uint32_t new_phase = lwmac->tx.timestamp - lwmac->last_wakeup;
+        /* WR arrived at destination, so calculate destination wakeup phase
+         * based on the timestamp of the WR we sent */
+         uint32_t new_phase;
+         /* If sending WRs took longer than one wakeup interval */
+         new_phase= _ticks_to_phase(lwmac->tx.timestamp - lwmac->last_wakeup);
 
-        /* If sending WRs took longer than one wakeup interval */
-        new_phase %= RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
-
-        /* If the phase was known before only update if smaller
-         * TODO: check if this is always a good idea
-         */
-        if( (lwmac->tx.current_queue->phase == LWMAC_PHASE_UNINITIALIZED) ||
-            (new_phase < lwmac->tx.current_queue->phase) ) {
-            lwmac->tx.current_queue->phase = new_phase;
-            LOG_INFO("New phase: %"PRIu32"\n", new_phase);
-        } else {
-            LOG_INFO("Phase didn't change\n");
-        }
+        /* Save newly calculated phase for destination */
+        lwmac->tx.current_queue->phase = new_phase;
+        LOG_INFO("New phase: %"PRIu32"\n", new_phase);
 
         /* We don't need the packet anymore */
         gnrc_pktbuf_release(pkt);
@@ -259,6 +279,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
         /* Send data */
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
+        _set_netdev_state(lwmac, NETOPT_STATE_TX);
 
         /* Packet has been released by netdev, so drop pointer */
         lwmac->tx.packet = NULL;

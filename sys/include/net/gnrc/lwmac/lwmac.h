@@ -45,7 +45,7 @@ extern "C" {
  * @brief   Count of parallel timeouts. Shouldn't needed to be changed.
  */
 #ifndef LWMAC_TIMEOUT_COUNT
-#define LWMAC_TIMEOUT_COUNT             (2U)
+#define LWMAC_TIMEOUT_COUNT             (3U)
 #endif
 
 /**
@@ -74,8 +74,25 @@ extern "C" {
 #define LWMAC_WAKEUP_DURATION_MS        (LWMAC_TIME_BETWEEN_WR_US / 1000 * 2)
 #endif
 
+/* Start sending earlier then known phase. Therefore advance to beginning edge
+ * of destinations wakeup phase over time.
+ * Note: * RTT tick is ~30us
+ *       * there is a certain overhead until WR will be sent
+ */
+#ifndef LWMAC_WR_BEFORE_PHASE_US
+#define LWMAC_WR_BEFORE_PHASE_US        (500U)
+#endif
+
+/* WR preparation overhead before it can be sent (higher with debugging output) */
+#ifndef LWMAC_WR_PREPARATION_US
+#define LWMAC_WR_PREPARATION_US         (7000U + LWMAC_WR_BEFORE_PHASE_US)
+#endif
+
+/* How long to wait after a WA for data to come in. It's enough to catch the
+ * beginning of the packet if the transceiver supports RX_STARTED event (this
+ * can be important for big packets). */
 #ifndef LWMAC_DATA_DELAY_US
-#define LWMAC_DATA_DELAY_US             (50000U)        /* 50 ms */
+#define LWMAC_DATA_DELAY_US             (5000U)
 #endif
 
 #define LWMAC_EVENT_RTT_TYPE            (0x4300)
@@ -136,7 +153,8 @@ typedef enum {
     TIMEOUT_WR,
     TIMEOUT_NO_RESPONSE,
     TIMEOUT_WA,
-    TIMEOUT_DATA
+    TIMEOUT_DATA,
+    TIMEOUT_WAIT_FOR_DEST_WAKEUP,
 } lwmac_timeout_type_t;
 
 /******************************************************************************/
@@ -189,7 +207,8 @@ typedef struct {
     uint32_t phase;
 } lwmac_tx_queue_t;
 
-#define LWMAC_PHASE_UNINITIALIZED -1
+#define LWMAC_PHASE_UNINITIALIZED   (0)
+#define LWMAC_PHASE_MAX             (-1)
 
 /******************************************************************************/
 

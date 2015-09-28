@@ -185,6 +185,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
 
         /* Send WA */
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
+        _set_netdev_state(lwmac, NETOPT_STATE_TX);
 
         /* Set timeout for expected data arrival */
         timex_t interval = {0, LWMAC_DATA_DELAY_US};
