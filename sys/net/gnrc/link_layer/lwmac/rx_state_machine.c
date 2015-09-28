@@ -187,10 +187,6 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
         _set_netdev_state(lwmac, NETOPT_STATE_TX);
 
-        /* Set timeout for expected data arrival */
-        timex_t interval = {0, LWMAC_DATA_DELAY_US};
-        lwmac_set_timeout(lwmac, TIMEOUT_DATA, &interval);
-
         /* Release WR and WA packets */
         gnrc_pktbuf_release(lwmac->rx.packet);
         lwmac->rx.packet = NULL;
@@ -198,6 +194,23 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         /* Enable Auto ACK again for data reception */
         autoack = NETOPT_ENABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
+
+        GOTO_RX_STATE(RX_STATE_WAIT_WA_SENT, false);
+    }
+    case RX_STATE_WAIT_WA_SENT:
+    {
+        LOG_DEBUG("RX_STATE_WAIT_WA_SENT\n");
+
+        if(lwmac->tx_feedback == TX_FEEDBACK_UNDEF) {
+            LOG_DEBUG("WA not yet completely sent\n");
+            break;
+        }
+
+        /* TODO: Maybe check if sending was successful? */
+
+        /* Set timeout for expected data arrival */
+        timex_t interval = {0, LWMAC_DATA_DELAY_US};
+        lwmac_set_timeout(lwmac, TIMEOUT_DATA, &interval);
 
         GOTO_RX_STATE(RX_STATE_WAIT_FOR_DATA, false);
     }
@@ -242,7 +255,11 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             GOTO_RX_STATE(RX_STATE_INIT, true);
         }
 
-        if(lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) {
+        /* Only timeout if no packet (presumably the expected data) is being
+         * received. This won't be blocked by WRs as they restart the state
+         * machine (see above). */
+        if( (lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) &&
+            (!lwmac->rx_started) ) {
             LOG_ERROR("DATA timed out\n");
             GOTO_RX_STATE(RX_STATE_FAILED, true);
         }

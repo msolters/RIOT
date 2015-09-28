@@ -140,6 +140,7 @@ typedef enum {
     RX_STATE_INIT,          /**< Initiate reception */
     RX_STATE_WAIT_FOR_WR,   /**< Wait for a wakeup request */
     RX_STATE_SEND_WA,       /**< Send wakeup ackknowledge to requesting node */
+    RX_STATE_WAIT_WA_SENT,  /**< Wait until WA sent to set timeout */
     RX_STATE_WAIT_FOR_DATA, /**< Wait for actual payload data */
     RX_STATE_SUCCESSFUL,    /**< Recption has finished successfully */
     RX_STATE_FAILED         /**< Reception over, but nothing received */
