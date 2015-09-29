@@ -125,6 +125,7 @@ typedef enum {
     TX_STATE_STOPPED = 0,
     TX_STATE_INIT,          /**< Initiate transmission */
     TX_STATE_SEND_WR,       /**< Send a wakeup request */
+    TX_STATE_WAIT_WR_SENT,  /**< Wait until WR sent to set timeout */
     TX_STATE_WAIT_FOR_WA,   /**< Wait for dest node's wakeup ackknowledge */
     TX_STATE_SEND_DATA,     /**< Send the actual payload data */
     TX_STATE_WAIT_FEEDBACK, /**< Wait if packet was ACKed */

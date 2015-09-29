@@ -169,11 +169,27 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         }
 
         /* Save timestamp in case this WR reaches the destination node so that
-         * we know it's wakeup phase relative to ours for the next time */
+         * we know it's wakeup phase relative to ours for the next time. This
+         * is not exactly the time the WR was completely sent, but the timing
+         * we can reproduce here. */
         lwmac->tx.timestamp = rtt_get_counter();
 
         /* Trigger sending frame */
         _set_netdev_state(lwmac, NETOPT_STATE_TX);
+
+        /* Flush RX queue, TODO: maybe find a way without loosing RX packets */
+        packet_queue_flush(&lwmac->rx.queue);
+
+        GOTO_TX_STATE(TX_STATE_WAIT_WR_SENT, false);
+    }
+    case TX_STATE_WAIT_WR_SENT:
+    {
+        LOG_DEBUG("TX_STATE_WAIT_WR_SENT\n");
+
+        if(lwmac->tx_feedback == TX_FEEDBACK_UNDEF) {
+            LOG_DEBUG("WR not yet completely sent\n");
+            break;
+        }
 
         /* Set timeout for next WR in case no WA will be received */
         timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
@@ -182,7 +198,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* Set timeout after sending to get the timing right */
         if(lwmac->tx.wr_sent == 0) {
             /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
-            timex_t interval = {0, (LWMAC_WAKEUP_INTERVAL_MS + LWMAC_WAKEUP_DURATION_MS) * 1000};
+            timex_t interval = {0, (LWMAC_WAKEUP_INTERVAL_MS /* + LWMAC_WAKEUP_DURATION_MS */ ) * 1000};
             LOG_INFO("Timeout after: %"PRIu32" us\n", interval.microseconds);
             lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
         }
@@ -191,9 +207,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_queue->phase);
         LOG_DEBUG("Phase when sent was:   %"PRIu32"\n", _ticks_to_phase(lwmac->tx.timestamp));
         LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", rtt_get_counter());
-
-        /* Flush RX queue, TODO: maybe find a way without loosing RX packets */
-        packet_queue_flush(&lwmac->rx.queue);
 
         lwmac->tx.wr_sent++;
 
