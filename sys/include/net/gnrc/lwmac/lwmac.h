@@ -158,6 +158,8 @@ typedef enum {
     TIMEOUT_WAIT_FOR_DEST_WAKEUP,
 } lwmac_timeout_type_t;
 
+extern char* lwmac_timeout_names[];
+
 /******************************************************************************/
 
 typedef struct {

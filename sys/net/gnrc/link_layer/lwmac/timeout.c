@@ -18,6 +18,16 @@
 
 #include "net/gnrc/lwmac/timeout.h"
 
+/******************************************************************************/
+
+char* lwmac_timeout_names[] = {
+    [TIMEOUT_DISABLED]              = "TIMEOUT_DISABLED",
+    [TIMEOUT_WR]                    = "TIMEOUT_WR",
+    [TIMEOUT_NO_RESPONSE]           = "TIMEOUT_NO_RESPONSE",
+    [TIMEOUT_WA]                    = "TIMEOUT_WA",
+    [TIMEOUT_DATA]                  = "TIMEOUT_DATA",
+    [TIMEOUT_WAIT_FOR_DEST_WAKEUP]  = "TIMEOUT_WAIT_FOR_DEST_WAKEUP"
+};
 
 /******************************************************************************/
 

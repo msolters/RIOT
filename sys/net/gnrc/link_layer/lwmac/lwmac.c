@@ -206,7 +206,7 @@ bool lwmac_update(void)
                  * be missed. */
                 rtt_handler(LWMAC_EVENT_RTT_PAUSE);
             } else {
-                /* LOG_DEBUG("Nothing to do, why did you get called?\n"); */
+                /* LOG_DEBUG("Nothing to do, why did we get called?\n"); */
             }
         } else {
             if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP)) {
@@ -297,7 +297,7 @@ bool lwmac_update(void)
         /* If state has changed, reschedule main state machine */
         if(state_tx != lwmac.tx.state)
         {
-            lwmac.needs_rescheduling = true;
+            lwmac_schedule_update();
         }
         break;
     }
@@ -513,8 +513,8 @@ static void *_lwmac_thread(void *args)
         /* An lwmac timeout occured */
         case LWMAC_EVENT_TIMEOUT_TYPE:
         {
-            LOG_DEBUG("LWMAC_EVENT_VTIMER_TYPE\n");
             lwmac_timeout_t* timeout = (lwmac_timeout_t*) msg.content.ptr;
+            LOG_DEBUG("%s expiring\n", lwmac_timeout_names[timeout->type]);
             timeout->expired = true;
             lwmac_schedule_update();
             break;
