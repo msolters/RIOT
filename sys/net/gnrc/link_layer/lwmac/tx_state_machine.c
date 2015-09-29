@@ -141,13 +141,8 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         netopt_enable_t autoack = NETOPT_DISABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
 
-        if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
-            LOG_WARNING("Receiving now, so cancel sending WR\n");
-            gnrc_pktbuf_release(pkt);
-            GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
-        }
-
-        /* Prepare WR */
+        /* Prepare WR, this will discard any frame in the transceiver that has
+         * possibly arrived in the meantime but we don't care at this point. */
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
 
         /* First WR, try to catch wakeup phase */
