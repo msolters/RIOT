@@ -406,6 +406,7 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
         if(!lwmac.rx_started) {
             LOG_WARNING("Maybe sending kicked in and frame buffer is now corrupted\n");
             gnrc_pktbuf_release(pkt);
+            lwmac.rx_started = false;
             break;
         }
 
