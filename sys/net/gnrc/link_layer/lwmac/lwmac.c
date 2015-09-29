@@ -188,8 +188,6 @@ bool lwmac_update(void)
             int time_until_tx = _time_until_tx_us(&lwmac);
 
             if(time_until_tx > 0) {
-                LOG_INFO("There's something to send!\n");
-
                 /* If there's not enough time to prepare a WR to catch the phase
                  * postpone to next interval */
                 if (time_until_tx < LWMAC_WR_PREPARATION_US) {
@@ -199,7 +197,7 @@ bool lwmac_update(void)
                 time_until_tx -= LWMAC_WR_PREPARATION_US;
 
                 timex_t interval = {0, time_until_tx};
-                LOG_INFO("Schedule wakeup in: %"PRIu32" us\n", interval.microseconds);
+                LOG_DEBUG("Schedule wakeup for TX in: %"PRIu32" us\n", interval.microseconds);
                 lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, &interval);
 
                 /* Stop dutycycling, we're preparing to send. This prevents the
@@ -211,10 +209,10 @@ bool lwmac_update(void)
             }
         } else {
             if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP)) {
-                LOG_INFO("Got timeout for dest wakeup, ticks: %"PRIu32"\n", rtt_get_counter());
+                LOG_DEBUG("Got timeout for dest wakeup, ticks: %"PRIu32"\n", rtt_get_counter());
                 lwmac_set_state(TRANSMITTING);
             } else {
-                LOG_DEBUG("Waiting for TIMEOUT_WAIT_FOR_DEST_WAKEUP\n");
+                /* LOG_DEBUG("Nothing to do, why did we get called?\n"); */
             }
         }
         break;
@@ -424,7 +422,6 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
         lwmac.tx_feedback = TX_FEEDBACK_UNDEF;
         lwmac.rx_started = false;
         lwmac_schedule_update();
-        LOG_INFO("EVT TX_STARTED\n");
         break;
     case NETDEV_EVENT_TX_COMPLETE:
         lwmac.tx_feedback = TX_FEEDBACK_SUCCESS;
@@ -432,13 +429,11 @@ static void _event_cb(gnrc_netdev_event_t event, void *data)
         lwmac_schedule_update();
         break;
     case NETDEV_EVENT_TX_NOACK:
-        LOG_DEBUG("NETDEV_EVENT_TX_NOACK\n");
         lwmac.tx_feedback = TX_FEEDBACK_NOACK;
         lwmac.rx_started = false;
         lwmac_schedule_update();
         break;
     case NETDEV_EVENT_TX_MEDIUM_BUSY:
-        LOG_DEBUG("NETDEV_EVENT_TX_MEDIUM_BUSY\n");
         lwmac.tx_feedback = TX_FEEDBACK_BUSY;
         lwmac.rx_started = false;
         lwmac_schedule_update();

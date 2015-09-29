@@ -194,7 +194,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         if(lwmac->tx.wr_sent == 0) {
             /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
             timex_t interval = {0, (LWMAC_WAKEUP_INTERVAL_MS /* + LWMAC_WAKEUP_DURATION_MS */ ) * 1000};
-            LOG_INFO("Timeout after: %"PRIu32" us\n", interval.microseconds);
+            LOG_DEBUG("Timeout after: %"PRIu32" us\n", interval.microseconds);
             lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
         }
 
@@ -261,7 +261,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
         /* Save newly calculated phase for destination */
         lwmac->tx.current_queue->phase = new_phase;
-        LOG_INFO("New phase: %"PRIu32"\n", new_phase);
+        LOG_DEBUG("New phase: %"PRIu32"\n", new_phase);
 
         /* We don't need the packet anymore */
         gnrc_pktbuf_release(pkt);
