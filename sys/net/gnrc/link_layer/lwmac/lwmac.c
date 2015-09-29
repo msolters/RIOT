@@ -288,7 +288,6 @@ bool lwmac_update(void)
                      "(%"PRIu32" WRs)\n",
                      lwmac.tx.packet, tx_success, lwmac.tx.wr_sent);
             lwmac_tx_stop(&lwmac);
-            lwmac_clear_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP);
             lwmac_set_state(SLEEPING);
             break;
         default:
