@@ -200,6 +200,11 @@ bool lwmac_update(void)
                 timex_t interval = {0, time_until_tx};
                 LOG_INFO("Schedule wakeup in: %"PRIu32" us\n", interval.microseconds);
                 lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, &interval);
+
+                /* Stop dutycycling, we're preparing to send. This prevents the
+                 * timeout arriving late, so that the destination phase would
+                 * be missed. */
+                rtt_handler(LWMAC_EVENT_RTT_PAUSE);
             } else {
                 /* LOG_DEBUG("Nothing to do, why did you get called?\n"); */
             }
