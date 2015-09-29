@@ -121,7 +121,8 @@ void lwmac_set_state(lwmac_state_t newstate)
     case SLEEPING:
         /* Put transceiver to sleep */
         _set_netdev_state(&lwmac, NETOPT_STATE_SLEEP);
-        break;
+        /* Return immediately, so no rescheduling */
+        return;
 
     /* Trying to send data */
     case TRANSMITTING:
