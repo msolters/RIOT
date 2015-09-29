@@ -258,6 +258,8 @@ typedef struct {
     lwmac_timeout_t timeouts[LWMAC_TIMEOUT_COUNT];
     /* Used to calculate wakeup times */
     uint32_t last_wakeup;
+    /* Keep track of duty cycling to avoid late RTT events after stopping */
+    bool dutycycling_active;
     /* Used internally for rescheduling state machine update, e.g. after state
      * transition caused in update */
     bool needs_rescheduling;
@@ -275,6 +277,7 @@ typedef struct {
 /* tx_feedback */           LWMAC_TX_FEEDBACK_INIT, \
 /* timeouts */              {}, \
 /* last_wakeup */           0, \
+/* dutycycling_active */    false, \
 /* needs_rescheduling */    false \
 }
 

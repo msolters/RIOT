@@ -347,6 +347,7 @@ void rtt_handler(uint32_t event)
         alarm = rtt_get_counter() + RTT_MS_TO_TICKS(150);
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
         lpm_prevent_sleep = 1;
+        lwmac.dutycycling_active = true;
         break;
 
     case LWMAC_EVENT_RTT_STOP:
@@ -354,6 +355,7 @@ void rtt_handler(uint32_t event)
         rtt_clear_alarm();
         LOG_DEBUG("RTT: Stop duty cycling, now in state %u\n", lwmac.state);
         lpm_prevent_sleep = 1;
+        lwmac.dutycycling_active = false;
         break;
 
     case LWMAC_EVENT_RTT_RESUME:
@@ -361,6 +363,7 @@ void rtt_handler(uint32_t event)
         alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         lpm_prevent_sleep = 0;
+        lwmac.dutycycling_active = true;
         break;
     }
 }
@@ -506,8 +509,12 @@ static void *_lwmac_thread(void *args)
 
         /* RTT raised an interrupt */
         case LWMAC_EVENT_RTT_TYPE:
-            rtt_handler(msg.content.value);
-            lwmac_schedule_update();
+            if(lwmac.dutycycling_active) {
+                rtt_handler(msg.content.value);
+                lwmac_schedule_update();
+            } else {
+                LOG_DEBUG("Ignoring late RTT event while dutycycling is off\n");
+            }
             break;
 
         /* An lwmac timeout occured */
