@@ -122,6 +122,23 @@ void nmi_default(void)
  * RAM we will reset the stack pointer to the top of available RAM. */
 #define HARDFAULT_HANDLER_REQUIRED_STACK_SPACE (THREAD_EXTRA_STACKSIZE_PRINTF)
 
+/* Although we make sure that the handler stack never leaves valid RAM, it may
+ * still corrupt data in the section preceeding the handler stack. If this
+ * happens tell the user. */
+static inline void _check_stack_size_left(uint32_t required)
+{
+    uint32_t* sp;
+    asm volatile ("mov %[sp], sp" : [sp] "=r" (sp) : : );
+    /* If printf may overflow the handler stack */
+    if( (sp - &_sstack) < required) {
+        uint32_t bytes_corrupt = required - ((uint32_t)sp - (uint32_t)&_sstack);
+        printf("RAM may be corrupted now, %"PRIu32" bytes possibly overwritten\n"
+                "%p-%p may be altered\n\n",
+               bytes_corrupt,
+               (void*)((uint32_t)sp - required), &_sstack);
+    }
+}
+
 /* Trampoline function to save stack pointer before calling hard fault handler */
 void hard_fault_default(void)
 {
@@ -242,6 +259,7 @@ __attribute__((used)) void hard_fault_handler(uint32_t* sp, uint32_t corrupted, 
             printf("MMFAR: 0x%08" PRIx32 "\n", mmfar);
         }
 #endif
+        _check_stack_size_left(HARDFAULT_HANDLER_REQUIRED_STACK_SPACE);
         puts("Misc");
         printf("EXC_RET: 0x%08" PRIx32 "\n", exc_return);
         puts("Attempting to reconstruct state for debugging...");
