@@ -21,8 +21,9 @@
 #ifndef GNRC_LWMAC_INTERNAL_H_
 #define GNRC_LWMAC_INTERNAL_H_
 
+#include <stdint.h>
 #include "periph/rtt.h"
-#include "net/gnrc/lwmac/lwmac.h"
+#include "lwmac_types.h"
 
 #ifdef __cplusplus
 extern "C" {

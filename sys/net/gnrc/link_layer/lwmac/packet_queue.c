@@ -17,11 +17,9 @@
  * @}
  */
 
-#include "net/gnrc.h"
-#include "net/gnrc/lwmac/lwmac.h"
-#include "net/gnrc/lwmac/packet_queue.h"
-#include "panic.h"
-
+#include <net/gnrc.h>
+#include <net/gnrc/lwmac/lwmac.h>
+#include <net/gnrc/lwmac/packet_queue.h>
 
 static priority_queue_node_t _packet_queue_nodes[LWMAC_TX_QUEUE_SIZE];
 

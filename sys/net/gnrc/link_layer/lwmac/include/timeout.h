@@ -20,8 +20,7 @@
 #define LWMAC_TIMEOUT_H
 
 #include "timex.h"
-#include "priority_queue.h"
-#include "net/gnrc/pkt.h"
+#include "lwmac_types.h"
 
 #ifdef __cplusplus
 extern "C" {

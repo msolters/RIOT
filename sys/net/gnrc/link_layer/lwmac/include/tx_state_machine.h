@@ -19,8 +19,8 @@
 #ifndef LWMAC_TX_STATE_MACHINE_H_
 #define LWMAC_TX_STATE_MACHINE_H_
 
-#include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc/pkt.h"
+#include "lwmac_types.h"
 
 #ifdef __cplusplus
 extern "C" {

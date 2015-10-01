@@ -19,19 +19,22 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#include "kernel.h"
-#include "msg.h"
-#include "thread.h"
-#include "timex.h"
-#include "priority_queue.h"
-#include "periph/rtt.h"
-#include "net/gnrc.h"
-#include "net/gnrc/lwmac/lwmac.h"
-#include "net/gnrc/lwmac/packet_queue.h"
+#include <kernel.h>
+#include <msg.h>
+#include <thread.h>
+#include <timex.h>
+#include <periph/rtt.h>
+#include <net/gnrc.h>
+#include <net/gnrc/lwmac/lwmac.h>
+#include <net/gnrc/lwmac/packet_queue.h>
+
 #include "include/tx_state_machine.h"
 #include "include/rx_state_machine.h"
 #include "include/lwmac_internal.h"
+#include "include/lwmac_types.h"
 #include "include/timeout.h"
 
 #define ENABLE_DEBUG    (1)

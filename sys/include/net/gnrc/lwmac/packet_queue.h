@@ -17,11 +17,12 @@
  * @}
  */
 
-#ifndef PACKET_QUEUE_H
-#define PACKET_QUEUE_H
+#ifndef LWMAC_PACKET_QUEUE_H
+#define LWMAC_PACKET_QUEUE_H
 
-#include "priority_queue.h"
-#include "net/gnrc/pkt.h"
+#include <stdint.h>
+#include <priority_queue.h>
+#include <net/gnrc/pkt.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,4 +56,4 @@ priority_queue_node_t* packet_queue_push(packet_queue_t* q,
 }
 #endif
 
-#endif /* PACKET_QUEUE_H */
+#endif /* LWMAC_PACKET_QUEUE_H */

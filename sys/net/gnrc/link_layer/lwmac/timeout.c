@@ -16,8 +16,11 @@
  * @}
  */
 
-#include "net/gnrc/lwmac/lwmac.h"
+#include <vtimer.h>
+#include <net/gnrc/lwmac/lwmac.h>
+
 #include "include/timeout.h"
+#include "include/lwmac_types.h"
 
 /******************************************************************************/
 
