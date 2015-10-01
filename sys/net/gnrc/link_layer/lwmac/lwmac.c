@@ -317,6 +317,10 @@ static void rtt_cb(void* arg)
     msg.content.value = ((uint32_t) arg ) & 0xffff;
     msg.type = LWMAC_EVENT_RTT_TYPE;
     msg_send(&msg, lwmac.pid);
+
+    if (sched_context_switch_request) {
+        thread_yield();
+    }
 }
 
 /******************************************************************************/
