@@ -22,6 +22,8 @@
 #define GNRC_LWMAC_TYPES_H_
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <kernel.h>
 #include <vtimer.h>
 #include <net/gnrc.h>
 #include <net/gnrc/lwmac/packet_queue.h>
