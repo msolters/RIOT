@@ -29,10 +29,10 @@
 #include "net/gnrc.h"
 #include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc/lwmac/packet_queue.h"
-#include "net/gnrc/lwmac/timeout.h"
-#include "net/gnrc/lwmac/tx_state_machine.h"
-#include "net/gnrc/lwmac/rx_state_machine.h"
+#include "include/tx_state_machine.h"
+#include "include/rx_state_machine.h"
 #include "include/lwmac_internal.h"
+#include "include/timeout.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"

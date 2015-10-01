@@ -19,9 +19,9 @@
 #include "periph/rtt.h"
 #include "net/gnrc.h"
 #include "net/gnrc/lwmac/lwmac.h"
-#include "net/gnrc/lwmac/tx_state_machine.h"
-#include "net/gnrc/lwmac/timeout.h"
 #include "net/gnrc/lwmac/packet_queue.h"
+#include "include/tx_state_machine.h"
+#include "include/timeout.h"
 #include "include/lwmac_internal.h"
 
 #define ENABLE_DEBUG    (1)

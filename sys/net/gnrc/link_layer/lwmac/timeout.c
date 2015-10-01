@@ -16,7 +16,8 @@
  * @}
  */
 
-#include "net/gnrc/lwmac/timeout.h"
+#include "net/gnrc/lwmac/lwmac.h"
+#include "include/timeout.h"
 
 /******************************************************************************/
 

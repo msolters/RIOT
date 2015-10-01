@@ -21,9 +21,8 @@
 #include "net/gnrc.h"
 #include "net/gnrc/lwmac/lwmac.h"
 #include "net/gnrc/lwmac/packet_queue.h"
-#include "net/gnrc/lwmac/timeout.h"
 #include "include/lwmac_internal.h"
-
+#include "include/timeout.h"
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
