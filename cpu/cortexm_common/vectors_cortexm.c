@@ -130,12 +130,13 @@ static inline void _check_stack_size_left(uint32_t required)
     uint32_t* sp;
     asm volatile ("mov %[sp], sp" : [sp] "=r" (sp) : : );
     /* If printf may overflow the handler stack */
-    if( (sp - &_sstack) < required) {
-        uint32_t bytes_corrupt = required - ((uint32_t)sp - (uint32_t)&_sstack);
+    if( (uint32_t)sp < ((uint32_t)&_sstack + required) ) {
+        uint32_t bytes_corrupt = required + (uint32_t)&_sstack - (uint32_t)sp;
         printf("RAM may be corrupted now, %"PRIu32" bytes possibly overwritten\n"
                 "%p-%p may be altered\n\n",
                bytes_corrupt,
-               (void*)((uint32_t)sp - required), &_sstack);
+               (void*)((uint32_t)sp - required),
+               &_sstack);
     }
 }
 
