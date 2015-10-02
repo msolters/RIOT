@@ -16,6 +16,7 @@
  * @}
  */
 
+#include <stdbool.h>
 #include <periph/rtt.h>
 #include <net/gnrc.h>
 #include <net/gnrc/lwmac/lwmac.h>
@@ -230,9 +231,8 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     uint8_t* addr;
     int addr_len;
     int neighbour_id;
-    bool queue_existed = true;
-
-    lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
+    lwmac_tx_neighbour_t* neighbour;
+    bool neighbour_known = true;
 
     /* Get destination address of packet */
     addr_len = _get_dest_address(pkt, &addr);
@@ -247,13 +247,16 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 
     /* Neighbour node doesn't have a queue yet */
     if(neighbour_id < 0) {
-        /* Try to allocate queue */
+        neighbour_known = false;
+
+        /* Try to allocate neighbour entry */
         neighbour_id = _alloc_neighbour(lwmac);
 
-        queue_existed = false;
-
-        /* No queues left */
+        /* No neighbour entries left */
         if(neighbour_id < 0) {
+            DEBUG("[lwmac-int] No neighbour entries left, maybe increase "
+                  "LWMAC_NEIGHBOUR_COUNT for better performance\n");
+
             /* Try to free an unused queue */
             neighbour_id = _free_neighbour(lwmac);
 
@@ -266,17 +269,19 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
         }
     }
 
-    if(packet_queue_push(&(neighbours[neighbour_id].queue), pkt, 0) == NULL) {
+    neighbour = _get_neighbour(lwmac, neighbour_id);
+
+    if(!neighbour_known) {
+        _init_neighbour(neighbour, addr, addr_len);
+    }
+
+    if(packet_queue_push(&(neighbour->queue), pkt, 0) == NULL) {
         DEBUG("[lwmac-int] Can't push to tx queue, no entries left\n");
         gnrc_pktbuf_release(pkt);
         return false;
     }
 
     DEBUG("[lwmac-int] Queuing pkt to q #%d\n", neighbour_id);
-
-    if(!queue_existed) {
-        _init_neighbour(&(neighbours[neighbour_id]), addr, addr_len);
-    }
 
     return true;
 }
