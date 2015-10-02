@@ -92,6 +92,12 @@ void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
 int _find_neighbour(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
 int _free_neighbour(lwmac_t* lwmac);
 int _alloc_neighbour(lwmac_t* lwmac);
+void _init_neighbour(lwmac_tx_neighbour_t* neighbour, uint8_t* addr, int len);
+
+static inline lwmac_tx_neighbour_t* _get_neighbour(lwmac_t* lwmac, unsigned int id)
+{
+    return &(lwmac->tx.neighbours[id]);
+}
 
 /* RTT phase calculation */
 uint32_t _ticks_to_phase(uint32_t ticks);

@@ -110,6 +110,19 @@ int _alloc_neighbour(lwmac_t* lwmac)
 
 /******************************************************************************/
 
+void _init_neighbour(lwmac_tx_neighbour_t* neighbour, uint8_t* addr, int len)
+{
+    assert(neighbour != NULL);
+    assert(addr  != NULL);
+    assert(len > 0);
+
+    neighbour->addr_len = len;
+    neighbour->phase = LWMAC_PHASE_UNINITIALIZED;
+    memcpy(&(neighbour->addr), addr, len);
+}
+
+/******************************************************************************/
+
 //static bool _tx_packet_present(lwmac_t* lwmac)
 //{
 //    for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
