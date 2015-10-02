@@ -183,7 +183,7 @@ uint32_t _ticks_until_phase(uint32_t phase)
 /******************************************************************************/
 
 /* Find the neighbour that has a packet queued and is next for sending */
-int _next_tx_neighbour(lwmac_tx_neighbour_t neighbours[])
+int _next_tx_neighbour(lwmac_t* lwmac)
 {
     int next = -1;
 
@@ -192,12 +192,12 @@ int _next_tx_neighbour(lwmac_tx_neighbour_t neighbours[])
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
 
-        if(packet_queue_length(&(neighbours[i].queue)) > 0) {
+        if(packet_queue_length(&(_get_neighbour(lwmac, i)->queue)) > 0) {
 
             /* Unknown destinations are initialized with their phase at the end
              * of the local interval, so known destinations that still wakeup
              * in this interval will be preferred. */
-            phase_check = _ticks_until_phase(neighbours[i].phase);
+            phase_check = _ticks_until_phase(_get_neighbour(lwmac, i)->phase);
 
             if(phase_check <= phase_nearest) {
                 next = i;
@@ -214,7 +214,7 @@ int _next_tx_neighbour(lwmac_tx_neighbour_t neighbours[])
 
 int _time_until_tx_us(lwmac_t* lwmac)
 {
-    int neighbour_id = _next_tx_neighbour(lwmac->tx.neighbours);
+    int neighbour_id = _next_tx_neighbour(lwmac);
 
     if(neighbour_id < 0) {
         return -1;
@@ -275,10 +275,7 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     DEBUG("[lwmac-int] Queuing pkt to q #%d\n", neighbour_id);
 
     if(!queue_existed) {
-        /* Setup new queue */
-        neighbours[neighbour_id].addr_len = addr_len;
-        neighbours[neighbour_id].phase = LWMAC_PHASE_UNINITIALIZED;
-        memcpy(&(neighbours[neighbour_id].addr), addr, addr_len);
+        _init_neighbour(&(neighbours[neighbour_id]), addr, addr_len);
     }
 
     return true;

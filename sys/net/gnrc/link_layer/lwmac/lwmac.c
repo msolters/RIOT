@@ -266,18 +266,27 @@ bool lwmac_update(void)
         {
         case TX_STATE_STOPPED:
         {
-            gnrc_pktsnip_t* pkt = NULL;
+            gnrc_pktsnip_t* pkt;
+            int neighbour_id;
+            lwmac_tx_neighbour_t* neighbour;
 
-            int neighbour_id = _next_tx_neighbour(lwmac.tx.neighbours);
-            lwmac_tx_neighbour_t* neighbour = &(lwmac.tx.neighbours[neighbour_id]);
+            neighbour_id = _next_tx_neighbour(&lwmac);
+            if(neighbour_id < 0) {
+                /* Shouldn't happen, never observed this case */
+                LOG_ERROR("In 'TRANSMITTING' but nothing to send\n");
+                lwmac_set_state(SLEEPING);
+            }
+            neighbour = _get_neighbour(&lwmac, neighbour_id);
+
 
             if( (pkt = packet_queue_pop(&neighbour->queue)) )
             {
                 lwmac_tx_start(&lwmac, pkt, neighbour);
                 lwmac_tx_update(&lwmac);
             } else {
-                LOG_WARNING("In 'TRANSMITTING' but tx.queue is empty\n");
-                lwmac_set_state(SLEEPING);
+                /* Shouldn't happen, never observed this case */
+                LOG_ERROR("Packet from neighbour's queue (#%d) invalid\n", neighbour_id);
+                lwmac_schedule_update();
             }
             break;
         }
