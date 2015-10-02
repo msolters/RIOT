@@ -168,12 +168,12 @@ typedef struct {
 } lwmac_tx_t;
 
 #define LWMAC_TX_INIT { \
-/* tx::state */         LWMAC_TX_STATE_INIT, \
-/* tx::queues */        {}, \
-/* tx::wr_sent */       0, \
-/* tx::packet */        NULL, \
-/* tx::current_queue */ NULL, \
-/* tx::timestamp */     0 \
+/* tx::state */             LWMAC_TX_STATE_INIT, \
+/* tx::neighbours */        {}, \
+/* tx::wr_sent */           0, \
+/* tx::packet */            NULL, \
+/* tx::current_neighbour */ NULL, \
+/* tx::timestamp */         0 \
 }
 
 /******************************************************************************/
