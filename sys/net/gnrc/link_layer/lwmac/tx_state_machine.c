@@ -117,7 +117,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         }
 
         /* Assemble WR */
-        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WR, false};
+        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WR};
 
         pkt = gnrc_pktbuf_add(NULL, &lwmac_hdr, sizeof(lwmac_hdr), GNRC_NETTYPE_LWMAC);
         if(pkt == NULL) {
@@ -284,7 +284,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
 
         /* Insert lwMAC header above NETIF header */
-        lwmac_hdr_t hdr = {FRAMETYPE_DATA, false};
+        lwmac_hdr_t hdr = {FRAMETYPE_DATA};
         pkt->next = gnrc_pktbuf_add(pkt->next, &hdr, sizeof(hdr), GNRC_NETTYPE_LWMAC);
 
         /* Send data */

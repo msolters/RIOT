@@ -224,7 +224,8 @@ typedef struct {
 typedef enum {
     FRAMETYPE_WR = 1,
     FRAMETYPE_WA,
-    FRAMETYPE_DATA
+    FRAMETYPE_DATA,
+    FRAMETYPE_BROADCAST,
 } lwmac_frame_type_t;
 
 
@@ -233,7 +234,6 @@ typedef enum {
  */
 typedef struct __attribute__((packed)) {
     lwmac_frame_type_t type;    /**< type of frame */
-    bool data_pending;          /**< is there more to send? */
 } lwmac_hdr_t;
 
 #ifdef __cplusplus

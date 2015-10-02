@@ -152,7 +152,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         }
 
         /* Assemble WA packet */
-        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WA, false};
+        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WA};
 
         pkt = gnrc_pktbuf_add(NULL, &lwmac_hdr, sizeof(lwmac_hdr), GNRC_NETTYPE_LWMAC);
         if(pkt == NULL) {
