@@ -268,12 +268,12 @@ bool lwmac_update(void)
         {
             gnrc_pktsnip_t* pkt = NULL;
 
-            int neighbour_id = _next_tx_neighbour(lwmac.tx.queues);
-            lwmac_tx_queue_t* tx_queue = &(lwmac.tx.queues[neighbour_id]);
+            int neighbour_id = _next_tx_neighbour(lwmac.tx.neighbours);
+            lwmac_tx_neighbour_t* neighbour = &(lwmac.tx.neighbours[neighbour_id]);
 
-            if( (pkt = packet_queue_pop(&tx_queue->queue)) )
+            if( (pkt = packet_queue_pop(&neighbour->queue)) )
             {
-                lwmac_tx_start(&lwmac, pkt, tx_queue);
+                lwmac_tx_start(&lwmac, pkt, neighbour);
                 lwmac_tx_update(&lwmac);
             } else {
                 LOG_WARNING("In 'TRANSMITTING' but tx.queue is empty\n");

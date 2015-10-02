@@ -89,9 +89,9 @@ netopt_state_t _get_netdev_state(lwmac_t* lwmac);
 void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
 
 /* TX queue handling */
-int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
-int _free_neighbour_queue(lwmac_t* lwmac);
-int _alloc_neighbour_queue(lwmac_t* lwmac);
+int _find_neighbour(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
+int _free_neighbour(lwmac_t* lwmac);
+int _alloc_neighbour(lwmac_t* lwmac);
 
 /* RTT phase calculation */
 uint32_t _ticks_to_phase(uint32_t ticks);
@@ -99,7 +99,7 @@ uint32_t _phase_to_ticks(uint32_t phase);
 uint32_t _phase_now(void);
 uint32_t _ticks_until_phase(uint32_t phase);
 
-int _next_tx_neighbour(lwmac_tx_queue_t queues[]);
+int _next_tx_neighbour(lwmac_tx_neighbour_t neighbours[]);
 int _time_until_tx_us(lwmac_t* lwmac);
 bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt);
 uint32_t _next_inphase_event(uint32_t last, uint32_t interval);

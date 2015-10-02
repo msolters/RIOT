@@ -148,7 +148,7 @@ typedef struct {
     packet_queue_t queue;
     /* Phase relative to lwmac::last_wakeup */
     uint32_t phase;
-} lwmac_tx_queue_t;
+} lwmac_tx_neighbour_t;
 
 #define LWMAC_PHASE_UNINITIALIZED   (0)
 #define LWMAC_PHASE_MAX             (-1)
@@ -158,12 +158,12 @@ typedef struct {
 typedef struct {
     /* Internal state of transmission state machine */
     lwmac_tx_state_t state;
-    lwmac_tx_queue_t queues[LWMAC_NEIGHBOUR_COUNT];
+    lwmac_tx_neighbour_t neighbours[LWMAC_NEIGHBOUR_COUNT];
     uint32_t wr_sent;
     /* Packet that is currently scheduled to be sent */
     gnrc_pktsnip_t* packet;
     /* Queue of destination node to which the current packet will be sent */
-    lwmac_tx_queue_t* current_queue;
+    lwmac_tx_neighbour_t* current_neighbour;
     uint32_t timestamp;
 } lwmac_tx_t;
 

@@ -49,11 +49,11 @@
 
 /******************************************************************************/
 
-void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_queue_t* queue)
+void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_neighbour_t* neighbour)
 {
     assert(lwmac != NULL);
     assert(pkt != NULL);
-    assert(queue != NULL);
+    assert(neighbour != NULL);
 
     if(lwmac->tx.packet) {
         LOG_WARNING("Starting but tx.packet is still set\n");
@@ -61,7 +61,7 @@ void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_queue_t* queue
     }
 
     lwmac->tx.packet = pkt;
-    lwmac->tx.current_queue = queue;
+    lwmac->tx.current_neighbour = neighbour;
     lwmac->tx.state = TX_STATE_INIT;
     lwmac->tx.wr_sent = 0;
 }
@@ -79,7 +79,7 @@ void lwmac_tx_stop(lwmac_t* lwmac)
     /* Release packet in case of failure */
     gnrc_pktbuf_release(lwmac->tx.packet);
     lwmac->tx.packet = NULL;
-    lwmac->tx.current_queue = NULL;
+    lwmac->tx.current_neighbour = NULL;
 }
 
 /******************************************************************************/
@@ -152,7 +152,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
             /* Calculate wakeup time */
             uint32_t wait_until;
-            wait_until  = _phase_to_ticks(lwmac->tx.current_queue->phase);
+            wait_until  = _phase_to_ticks(lwmac->tx.current_neighbour->phase);
             wait_until -= RTT_US_TO_TICKS(LWMAC_WR_BEFORE_PHASE_US);
 
             /* This output blocks a long time and can prevent correct timing */
@@ -201,7 +201,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         }
 
         /* Debug WR timing */
-        LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_queue->phase);
+        LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_neighbour->phase);
         LOG_DEBUG("Phase when sent was:   %"PRIu32"\n", _ticks_to_phase(lwmac->tx.timestamp));
         LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", rtt_get_counter());
 
@@ -262,7 +262,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
          new_phase= _ticks_to_phase(lwmac->tx.timestamp - lwmac->last_wakeup);
 
         /* Save newly calculated phase for destination */
-        lwmac->tx.current_queue->phase = new_phase;
+        lwmac->tx.current_neighbour->phase = new_phase;
         LOG_DEBUG("New phase: %"PRIu32"\n", new_phase);
 
         /* We don't need the packet anymore */

@@ -62,13 +62,13 @@ void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type)
 
 /******************************************************************************/
 
-int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
+int _find_neighbour(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
 {
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+    lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(queues[i].addr_len == addr_len) {
-            if(memcmp(&(queues[i].addr), dst_addr, addr_len) == 0) {
+        if(neighbours[i].addr_len == addr_len) {
+            if(memcmp(&(neighbours[i].addr), dst_addr, addr_len) == 0) {
                 return i;
             }
         }
@@ -79,15 +79,15 @@ int _find_neighbour_queue(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
 /******************************************************************************/
 
 /* Free first empty queue that is not active */
-int _free_neighbour_queue(lwmac_t* lwmac)
+int _free_neighbour(lwmac_t* lwmac)
 {
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+    lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if( (packet_queue_length(&(queues[i].queue)) == 0) &&
-            (&queues[i] != lwmac->tx.current_queue) ) {
+        if( (packet_queue_length(&(neighbours[i].queue)) == 0) &&
+            (&neighbours[i] != lwmac->tx.current_neighbour) ) {
             /* Mark as free */
-            queues[i].addr_len = 0;
+            neighbours[i].addr_len = 0;
             return i;
         }
     }
@@ -96,12 +96,12 @@ int _free_neighbour_queue(lwmac_t* lwmac)
 
 /******************************************************************************/
 
-int _alloc_neighbour_queue(lwmac_t* lwmac)
+int _alloc_neighbour(lwmac_t* lwmac)
 {
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+    lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(queues[i].addr_len == 0) {
+        if(neighbours[i].addr_len == 0) {
             return i;
         }
     }
@@ -170,7 +170,7 @@ uint32_t _ticks_until_phase(uint32_t phase)
 /******************************************************************************/
 
 /* Find the neighbour that has a packet queued and is next for sending */
-int _next_tx_neighbour(lwmac_tx_queue_t queues[])
+int _next_tx_neighbour(lwmac_tx_neighbour_t neighbours[])
 {
     int next = -1;
 
@@ -179,12 +179,12 @@ int _next_tx_neighbour(lwmac_tx_queue_t queues[])
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
 
-        if(packet_queue_length(&(queues[i].queue)) > 0) {
+        if(packet_queue_length(&(neighbours[i].queue)) > 0) {
 
             /* Unknown destinations are initialized with their phase at the end
              * of the local interval, so known destinations that still wakeup
              * in this interval will be preferred. */
-            phase_check = _ticks_until_phase(queues[i].phase);
+            phase_check = _ticks_until_phase(neighbours[i].phase);
 
             if(phase_check <= phase_nearest) {
                 next = i;
@@ -201,12 +201,12 @@ int _next_tx_neighbour(lwmac_tx_queue_t queues[])
 
 int _time_until_tx_us(lwmac_t* lwmac)
 {
-    int neighbour_id = _next_tx_neighbour(lwmac->tx.queues);
+    int neighbour_id = _next_tx_neighbour(lwmac->tx.neighbours);
 
     if(neighbour_id < 0) {
         return -1;
     }
-    uint32_t neighbour_phase = lwmac->tx.queues[neighbour_id].phase;
+    uint32_t neighbour_phase = lwmac->tx.neighbours[neighbour_id].phase;
     return RTT_TICKS_TO_US(_ticks_until_phase(neighbour_phase));
 }
 
@@ -219,7 +219,7 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     int neighbour_id;
     bool queue_existed = true;
 
-    lwmac_tx_queue_t* queues = lwmac->tx.queues;
+    lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     /* Get destination address of packet */
     addr_len = _get_dest_address(pkt, &addr);
@@ -230,19 +230,19 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
     }
 
     /* Search for existing queue for destination */
-    neighbour_id = _find_neighbour_queue(lwmac, addr, addr_len);
+    neighbour_id = _find_neighbour(lwmac, addr, addr_len);
 
     /* Neighbour node doesn't have a queue yet */
     if(neighbour_id < 0) {
         /* Try to allocate queue */
-        neighbour_id = _alloc_neighbour_queue(lwmac);
+        neighbour_id = _alloc_neighbour(lwmac);
 
         queue_existed = false;
 
         /* No queues left */
         if(neighbour_id < 0) {
             /* Try to free an unused queue */
-            neighbour_id = _free_neighbour_queue(lwmac);
+            neighbour_id = _free_neighbour(lwmac);
 
             /* All queues are in use, so reject */
             if(neighbour_id < 0) {
@@ -253,7 +253,7 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
         }
     }
 
-    if(packet_queue_push(&(queues[neighbour_id].queue), pkt, 0) == NULL) {
+    if(packet_queue_push(&(neighbours[neighbour_id].queue), pkt, 0) == NULL) {
         DEBUG("[lwmac-int] Can't push to tx queue, no entries left\n");
         gnrc_pktbuf_release(pkt);
         return false;
@@ -263,9 +263,9 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 
     if(!queue_existed) {
         /* Setup new queue */
-        queues[neighbour_id].addr_len = addr_len;
-        queues[neighbour_id].phase = LWMAC_PHASE_UNINITIALIZED;
-        memcpy(&(queues[neighbour_id].addr), addr, addr_len);
+        neighbours[neighbour_id].addr_len = addr_len;
+        neighbours[neighbour_id].phase = LWMAC_PHASE_UNINITIALIZED;
+        memcpy(&(neighbours[neighbour_id].addr), addr, addr_len);
     }
 
     return true;
