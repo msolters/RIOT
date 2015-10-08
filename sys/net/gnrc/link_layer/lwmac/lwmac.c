@@ -506,11 +506,8 @@ static void *_lwmac_thread(void *args)
     dev->driver->set(dev, NETOPT_PRELOADING, &enable, sizeof(enable));
 
     /* Get own address from netdev */
-    lwmac.addr_len = dev->driver->get(dev, NETOPT_ADDRESS, &lwmac.addr, 8);
-    if( (lwmac.addr_len < 0) || (lwmac.addr_len > 8) ) {
-        LOG_ERROR("Couldn't aquire hw address from netdev\n");
-        return NULL;
-    }
+    lwmac.l2_addr.len = dev->driver->get(dev, NETOPT_ADDRESS, &lwmac.l2_addr.addr, sizeof(lwmac.l2_addr.addr));
+    assert(lwmac.l2_addr.len > 0);
 
     /* Initialize receive packet queue */
     packet_queue_init(&lwmac.rx.queue,

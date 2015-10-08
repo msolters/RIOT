@@ -46,6 +46,14 @@ extern "C" {
 
 /******************************************************************************/
 
+typedef struct {
+    uint8_t  addr[LWMAC_MAX_L2_ADDR_LEN];
+    uint8_t  len;
+} l2_addr_t;
+#define LWMAC_L2_ADDR_INIT      { {0}, 0 }
+
+/******************************************************************************/
+
 typedef enum {
     UNDEF = -1,
     STOPPED,
@@ -145,13 +153,13 @@ typedef struct {
 
 typedef struct {
     /* Address of neighbour node */
-    uint64_t addr;
-    unsigned int addr_len;
+    l2_addr_t l2_addr;
     /* TX queue for this particular node */
     packet_queue_t queue;
     /* Phase relative to lwmac::last_wakeup */
     uint32_t phase;
 } lwmac_tx_neighbour_t;
+#define LWMAX_NEIGHBOUR_INIT        { LWMAC_L2_ADDR_INIT, {}, 0 }
 
 #define LWMAC_PHASE_UNINITIALIZED   (0)
 #define LWMAC_PHASE_MAX             (-1)
@@ -176,7 +184,7 @@ typedef struct {
 
 #define LWMAC_TX_INIT { \
 /* tx::state */             LWMAC_TX_STATE_INIT, \
-/* tx::neighbours */        { { 0 } }, \
+/* tx::neighbours */        { LWMAX_NEIGHBOUR_INIT }, \
 /* tx::_queue_nodes */      {}, \
 /* tx::wr_sent */           0, \
 /* tx::packet */            NULL, \
@@ -196,8 +204,7 @@ typedef struct {
     /* Track if a transmission might have corrupted a received packet */
     bool rx_started;
     /* Own address */
-    uint64_t addr;
-    unsigned int addr_len;
+    l2_addr_t l2_addr;
     lwmac_rx_t rx;
     lwmac_tx_t tx;
     /* Feedback of last packet that was sent */
@@ -218,8 +225,7 @@ typedef struct {
 /* netdev */                NULL, \
 /* state */                 UNDEF, \
 /* rx_in_progress */        false, \
-/* addr */                  0, \
-/* addr_len */              0, \
+/* l2_addr */               {}, \
 /* rx */                    LWMAC_RX_INIT, \
 /* tx */                    LWMAC_TX_INIT, \
 /* tx_feedback */           LWMAC_TX_FEEDBACK_INIT, \

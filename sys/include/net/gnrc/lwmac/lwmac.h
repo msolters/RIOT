@@ -97,6 +97,11 @@ extern "C" {
 #define LWMAC_DATA_DELAY_US             (5000U)
 #endif
 
+/* Max link layer address length in bytes */
+#ifndef LWMAC_MAX_L2_ADDR_LEN
+#define LWMAC_MAX_L2_ADDR_LEN             (2U)
+#endif
+
 
 /**
  * @brief   Initialize an instance of the LWMAC layer

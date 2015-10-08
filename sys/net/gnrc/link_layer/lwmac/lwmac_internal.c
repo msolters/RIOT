@@ -68,8 +68,8 @@ int _find_neighbour(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len)
     lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(neighbours[i].addr_len == addr_len) {
-            if(memcmp(&(neighbours[i].addr), dst_addr, addr_len) == 0) {
+        if(neighbours[i].l2_addr.len == addr_len) {
+            if(memcmp(&(neighbours[i].l2_addr.addr), dst_addr, addr_len) == 0) {
                 return i;
             }
         }
@@ -88,7 +88,7 @@ int _free_neighbour(lwmac_t* lwmac)
         if( (packet_queue_length(&(neighbours[i].queue)) == 0) &&
             (&neighbours[i] != lwmac->tx.current_neighbour) ) {
             /* Mark as free */
-            neighbours[i].addr_len = 0;
+            neighbours[i].l2_addr.len = 0;
             return i;
         }
     }
@@ -102,7 +102,7 @@ int _alloc_neighbour(lwmac_t* lwmac)
     lwmac_tx_neighbour_t* neighbours = lwmac->tx.neighbours;
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
-        if(neighbours[i].addr_len == 0) {
+        if(neighbours[i].l2_addr.len == 0) {
             packet_queue_init(&(neighbours[i].queue),
                               lwmac->tx._queue_nodes,
                               (sizeof(lwmac->tx._queue_nodes) / sizeof(packet_queue_node_t)));
@@ -120,9 +120,9 @@ void _init_neighbour(lwmac_tx_neighbour_t* neighbour, uint8_t* addr, int len)
     assert(addr  != NULL);
     assert(len > 0);
 
-    neighbour->addr_len = len;
+    neighbour->l2_addr.len = len;
     neighbour->phase = LWMAC_PHASE_UNINITIALIZED;
-    memcpy(&(neighbour->addr), addr, len);
+    memcpy(&(neighbour->l2_addr.addr), addr, len);
 }
 
 /******************************************************************************/
@@ -306,8 +306,8 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
 {
     gnrc_netif_hdr_t* netif_hdr;
     lwmac_hdr_t* lwmac_hdr;
-    uint8_t* own_addr = (uint8_t*) &(lwmac->addr);
-    uint8_t* dst_addr;
+    uint8_t* own_addr = lwmac->l2_addr.addr;
+    uint8_t *dst_addr;
 
     netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
     if(netif_hdr == NULL) {
@@ -326,14 +326,14 @@ bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac
         return false;
     }
 
-    if(netif_hdr->dst_l2addr_len != lwmac->addr_len) {
+    if(netif_hdr->dst_l2addr_len != lwmac->l2_addr.len) {
         DEBUG("[lwmac-int] Reject packet: address length mismatch\n");
         return false;
     }
 
     /* TODO: detect broadcast */
     dst_addr =  gnrc_netif_hdr_get_dst_addr(netif_hdr);
-    if(memcmp(own_addr,dst_addr, lwmac->addr_len) != 0) {
+    if(memcmp(own_addr,dst_addr, lwmac->l2_addr.len) != 0) {
         DEBUG("[lwmac-int] Reject packet: not destined to this node\n");
         DEBUG("[lwmac-int] Own addr: 0x%x%x, Dest addr: 0x%x%x\n",
                   own_addr[0], own_addr[1],
