@@ -380,3 +380,30 @@ uint32_t _next_inphase_event(uint32_t last, uint32_t interval)
 
     return last;
 }
+
+/******************************************************************************/
+
+void lwmac_print_hdr(lwmac_hdr_t* hdr)
+{
+    assert(hdr != NULL);
+
+    printf("LwMAC header:\n  Type: ");
+    switch(hdr->type) {
+    case FRAMETYPE_WR:
+        puts("Wakeup request (WR)");
+        break;
+    case FRAMETYPE_WA:
+        puts("Wakeup acknowledge (WA)");
+        break;
+    case FRAMETYPE_DATA:
+        puts("User data");
+        break;
+    case FRAMETYPE_BROADCAST:
+        puts("Broadcast user data");
+        break;
+    default:
+        puts("Unkown type");
+    }
+
+    printf("  Raw:  0x%02x\n", hdr->type);
+}

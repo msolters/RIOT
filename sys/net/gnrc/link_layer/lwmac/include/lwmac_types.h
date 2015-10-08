@@ -26,6 +26,7 @@
 #include <kernel.h>
 #include <vtimer.h>
 #include <net/gnrc.h>
+#include <net/gnrc/lwmac/hdr.h>
 #include <net/gnrc/lwmac/packet_queue.h>
 
 #ifdef __cplusplus
@@ -220,21 +221,6 @@ typedef struct {
 /* dutycycling_active */    false, \
 /* needs_rescheduling */    false \
 }
-
-typedef enum {
-    FRAMETYPE_WR = 1,
-    FRAMETYPE_WA,
-    FRAMETYPE_DATA,
-    FRAMETYPE_BROADCAST,
-} lwmac_frame_type_t;
-
-
-/**
- * @brief   lwMAC header
- */
-typedef struct __attribute__((packed)) {
-    lwmac_frame_type_t type;    /**< type of frame */
-} lwmac_hdr_t;
 
 #ifdef __cplusplus
 }
