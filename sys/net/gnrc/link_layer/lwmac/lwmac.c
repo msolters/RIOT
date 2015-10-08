@@ -193,6 +193,7 @@ bool lwmac_update(void)
             if(time_until_tx > 0) {
                 /* If there's not enough time to prepare a WR to catch the phase
                  * postpone to next interval */
+                // TODO: move this check into _time_until_tx_us()
                 if (time_until_tx < LWMAC_WR_PREPARATION_US) {
                     time_until_tx += LWMAC_WAKEUP_INTERVAL_MS * 1000;
                 }
@@ -206,6 +207,7 @@ bool lwmac_update(void)
                 /* Stop dutycycling, we're preparing to send. This prevents the
                  * timeout arriving late, so that the destination phase would
                  * be missed. */
+                // TODO: bad for power savings
                 rtt_handler(LWMAC_EVENT_RTT_PAUSE);
             } else {
                 /* LOG_DEBUG("Nothing to do, why did we get called?\n"); */

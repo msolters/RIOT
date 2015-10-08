@@ -19,16 +19,11 @@
  * @author      Daniel Krebs <github@daniel-krebs.net>
  */
 
-// TODO: cleanup type definitions, maybe move to other files
-
-#ifndef LWMAC_H_
-#define LWMAC_H_
+#ifndef GNRC_LWMAC_H
+#define GNRC_LWMAC_H
 
 #include "kernel.h"
-#include "vtimer.h"
-#include "net/gnrc/pkt.h"
 #include "net/gnrc/netdev.h"
-#include "net/gnrc/lwmac/packet_queue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,5 +114,5 @@ kernel_pid_t gnrc_lwmac_init(char *stack, int stacksize, char priority,
 }
 #endif
 
-#endif /* LWMAC_H_ */
+#endif /* GNRC_LWMAC_H */
 /** @} */
