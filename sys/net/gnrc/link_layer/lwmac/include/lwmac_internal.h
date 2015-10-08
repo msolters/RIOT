@@ -88,6 +88,15 @@ netopt_state_t _get_netdev_state(lwmac_t* lwmac);
  */
 void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
 
+/* @brief Check if outbound packet is broadcast
+ *
+ * @param[in]   pkt             packet to check
+ */
+static inline bool _packet_is_broadcast(gnrc_pktsnip_t* pkt)
+{
+    return (((gnrc_netif_hdr_t *)pkt->data)->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST);
+}
+
 /* TX queue handling */
 int _find_neighbour(lwmac_t* lwmac, uint8_t* dst_addr, int addr_len);
 int _free_neighbour(lwmac_t* lwmac);

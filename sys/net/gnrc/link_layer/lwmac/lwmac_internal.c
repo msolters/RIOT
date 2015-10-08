@@ -231,60 +231,71 @@ int _time_until_tx_us(lwmac_t* lwmac)
 
 bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 {
-    uint8_t* addr;
-    int addr_len;
-    int neighbour_id;
+
     lwmac_tx_neighbour_t* neighbour;
-    bool neighbour_known = true;
+    int neighbour_id;
 
-    /* Get destination address of packet */
-    addr_len = _get_dest_address(pkt, &addr);
-    if(addr_len <= 0) {
-        DEBUG("[lwmac-int] Packet has no destination address\n");
-        gnrc_pktbuf_release(pkt);
-        return false;
-    }
+    if(_packet_is_broadcast(pkt)) {
+        /* Broadcast queue is neighbour 0 by definition */
+        neighbour_id = 0;
+        neighbour = _get_neighbour(lwmac, neighbour_id);
 
-    /* Search for existing queue for destination */
-    neighbour_id = _find_neighbour(lwmac, addr, addr_len);
+    } else {
+        uint8_t* addr;
+        int addr_len;
+        bool neighbour_known = true;
 
-    /* Neighbour node doesn't have a queue yet */
-    if(neighbour_id < 0) {
-        neighbour_known = false;
+        /* Get destination address of packet */
+        addr_len = _get_dest_address(pkt, &addr);
+        if(addr_len <= 0) {
+            DEBUG("[lwmac-int] Packet has no destination address\n");
+            gnrc_pktbuf_release(pkt);
+            return false;
+        }
 
-        /* Try to allocate neighbour entry */
-        neighbour_id = _alloc_neighbour(lwmac);
+        /* Search for existing queue for destination */
+        neighbour_id = _find_neighbour(lwmac, addr, addr_len);
 
-        /* No neighbour entries left */
+        /* Neighbour node doesn't have a queue yet */
         if(neighbour_id < 0) {
-            DEBUG("[lwmac-int] No neighbour entries left, maybe increase "
-                  "LWMAC_NEIGHBOUR_COUNT for better performance\n");
+            neighbour_known = false;
 
-            /* Try to free an unused queue */
-            neighbour_id = _free_neighbour(lwmac);
+            /* Try to allocate neighbour entry */
+            neighbour_id = _alloc_neighbour(lwmac);
 
-            /* All queues are in use, so reject */
+            /* No neighbour entries left */
             if(neighbour_id < 0) {
-                DEBUG("[lwmac-int] Couldn't allocate tx queue for packet\n");
-                gnrc_pktbuf_release(pkt);
-                return false;
+                DEBUG("[lwmac-int] No neighbour entries left, maybe increase "
+                      "LWMAC_NEIGHBOUR_COUNT for better performance\n");
+
+                /* Try to free an unused queue */
+                neighbour_id = _free_neighbour(lwmac);
+
+                /* All queues are in use, so reject */
+                if(neighbour_id < 0) {
+                    DEBUG("[lwmac-int] Couldn't allocate tx queue for packet\n");
+                    gnrc_pktbuf_release(pkt);
+                    return false;
+                }
             }
         }
-    }
 
-    neighbour = _get_neighbour(lwmac, neighbour_id);
+        neighbour = _get_neighbour(lwmac, neighbour_id);
 
-    if(!neighbour_known) {
-        _init_neighbour(neighbour, addr, addr_len);
+        if(!neighbour_known) {
+            _init_neighbour(neighbour, addr, addr_len);
+        }
+
     }
 
     if(packet_queue_push(&(neighbour->queue), pkt, 0) == NULL) {
-        DEBUG("[lwmac-int] Can't push to tx queue, no entries left\n");
+        DEBUG("[lwmac-int] Can't push to neighbour #%d's queue, no entries left\n",
+                neighbour_id);
         gnrc_pktbuf_release(pkt);
         return false;
     }
 
-    DEBUG("[lwmac-int] Queuing pkt to q #%d\n", neighbour_id);
+    DEBUG("[lwmac-int] Queuing pkt to neighbour #%d\n", neighbour_id);
 
     return true;
 }
