@@ -295,10 +295,12 @@ bool lwmac_update(void)
 
         case TX_STATE_FAILED:
             tx_success = "NOT ";
+            /* Intended fall-through, TX packet will therefore be dropped. No
+             * automatic resending here, we did our best.
+             */
         case TX_STATE_SUCCESSFUL:
-            LOG_INFO("Transmission of pkt @ %p finished %ssuccessfully "
-                     "(%"PRIu32" WRs)\n",
-                     lwmac.tx.packet, tx_success, lwmac.tx.wr_sent);
+            LOG_INFO("Transmission was %ssuccessful (%"PRIu32" WRs sent)\n",
+                     tx_success, lwmac.tx.wr_sent);
             lwmac_tx_stop(&lwmac);
             lwmac_set_state(SLEEPING);
             break;

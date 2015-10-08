@@ -245,6 +245,10 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 break;
             }
 
+            /* TODO: If WA received from destination but for other node,
+             *       postpone transcation because destination won't talk to us.
+             */
+
             /* Cleanup packet that was popped and discarded */
             LOG_DEBUG("Reject pkt @ %p\n", pkt);
             gnrc_pktbuf_release(pkt);
