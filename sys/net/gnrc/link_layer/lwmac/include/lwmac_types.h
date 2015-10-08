@@ -130,12 +130,14 @@ typedef struct {
     /* Internal state of reception state machine */
     lwmac_rx_state_t state;
     packet_queue_t queue;
+    packet_queue_node_t _queue_nodes[LWMAC_RX_QUEUE_SIZE];
     gnrc_pktsnip_t* packet;
 } lwmac_rx_t;
 
 #define LWMAC_RX_INIT { \
 /* rx::state */         LWMAC_RX_STATE_INIT, \
 /* rx::queue */         {}, \
+/* rx::_queue_nodes */  {}, \
 /* rx::packet */        NULL \
 }
 
@@ -160,6 +162,9 @@ typedef struct {
     /* Internal state of transmission state machine */
     lwmac_tx_state_t state;
     lwmac_tx_neighbour_t neighbours[LWMAC_NEIGHBOUR_COUNT];
+    /* Shared buffer for TX queue nodes */
+    packet_queue_node_t _queue_nodes[LWMAC_TX_QUEUE_SIZE];
+    /* Count how many WRs were sent until WA received */
     uint32_t wr_sent;
     /* Packet that is currently scheduled to be sent */
     gnrc_pktsnip_t* packet;
@@ -170,7 +175,8 @@ typedef struct {
 
 #define LWMAC_TX_INIT { \
 /* tx::state */             LWMAC_TX_STATE_INIT, \
-/* tx::neighbours */        {}, \
+/* tx::neighbours */        { { 0 } }, \
+/* tx::_queue_nodes */      {}, \
 /* tx::wr_sent */           0, \
 /* tx::packet */            NULL, \
 /* tx::current_neighbour */ NULL, \

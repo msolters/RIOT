@@ -21,20 +21,21 @@
 #include <net/gnrc/lwmac/lwmac.h>
 #include <net/gnrc/lwmac/packet_queue.h>
 
-static priority_queue_node_t _packet_queue_nodes[LWMAC_TX_QUEUE_SIZE];
-
 /******************************************************************************/
 
-static priority_queue_node_t* _alloc_node(gnrc_pktsnip_t *pkt)
+static packet_queue_node_t* _alloc_node(packet_queue_t* q, gnrc_pktsnip_t *pkt)
 {
+    assert(q != NULL);
+    assert(q->buffer != NULL);
+    assert(q->buffer_size > 0);
     assert(sizeof(unsigned int) == sizeof(gnrc_pktsnip_t*));
 
-    for (size_t i = 0; i < sizeof(_packet_queue_nodes) / sizeof(priority_queue_node_t); i++) {
-        if( (_packet_queue_nodes[i].data == 0) &&
-            (_packet_queue_nodes[i].next == NULL))
+    for (size_t i = 0; i < q->buffer_size; i++) {
+        if( (q->buffer[i].data == 0) &&
+            (q->buffer[i].next == NULL))
         {
-            _packet_queue_nodes[i].data = (unsigned int) pkt;
-            return &(_packet_queue_nodes[i]);
+            q->buffer[i].data = (unsigned int) pkt;
+            return &(q->buffer[i]);
         }
     }
 
@@ -43,12 +44,25 @@ static priority_queue_node_t* _alloc_node(gnrc_pktsnip_t *pkt)
 
 /******************************************************************************/
 
-static inline void _free_node(priority_queue_node_t *node)
+static inline void _free_node(packet_queue_node_t *node)
 {
-    if(node) {
-        node->data = 0;
-        node->next = NULL;
-    }
+    assert(node != NULL);
+
+    node->data = 0;
+    node->next = NULL;
+}
+
+/******************************************************************************/
+
+void packet_queue_init(packet_queue_t* q, packet_queue_node_t buffer[], size_t buffer_size)
+{
+    assert(q != NULL);
+    assert(buffer != NULL);
+    assert(buffer_size > 0);
+
+    q->buffer = buffer;
+    q->buffer_size = buffer_size;
+    q->queue.first = NULL;
 }
 
 /******************************************************************************/
@@ -57,7 +71,7 @@ gnrc_pktsnip_t* packet_queue_pop(packet_queue_t* q)
 {
     if(!q || (q->length == 0))
         return NULL;
-    priority_queue_node_t* head = priority_queue_remove_head(&(q->queue));
+    packet_queue_node_t* head = priority_queue_remove_head(&(q->queue));
     gnrc_pktsnip_t* pkt = (gnrc_pktsnip_t*) head->data;
     _free_node(head);
     q->length--;
@@ -74,13 +88,13 @@ gnrc_pktsnip_t* packet_queue_head(packet_queue_t* q)
 }
 /******************************************************************************/
 
-priority_queue_node_t*
+packet_queue_node_t*
 packet_queue_push(packet_queue_t* q, gnrc_pktsnip_t* snip, uint32_t priority)
 {
-    if(!q || !snip)
-        return NULL;
+    assert(q != NULL);
+    assert(snip != NULL);
 
-    priority_queue_node_t* node = _alloc_node(snip);
+    packet_queue_node_t* node = _alloc_node(q, snip);
 
     if(node)
     {
@@ -98,7 +112,7 @@ void packet_queue_flush(packet_queue_t* q)
     if(q->length == 0)
         return;
 
-    priority_queue_node_t* node;
+    packet_queue_node_t* node;
     while( (node = priority_queue_remove_head(&(q->queue))) )
     {
         gnrc_pktbuf_release((gnrc_pktsnip_t*) node->data);

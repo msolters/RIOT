@@ -510,6 +510,11 @@ static void *_lwmac_thread(void *args)
         return NULL;
     }
 
+    /* Initialize receive packet queue */
+    packet_queue_init(&lwmac.rx.queue,
+                      lwmac.rx._queue_nodes,
+                      (sizeof(lwmac.rx._queue_nodes) / sizeof(packet_queue_node_t)));
+
     /* Start duty cycling */
     lwmac_set_state(START);
 

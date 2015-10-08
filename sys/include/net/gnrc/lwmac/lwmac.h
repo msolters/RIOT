@@ -57,6 +57,13 @@ extern "C" {
 #define LWMAC_TX_QUEUE_SIZE             (8U)
 #endif
 
+/**
+ * @brief   Set the default queue size for incoming packets
+ */
+#ifndef LWMAC_RX_QUEUE_SIZE
+#define LWMAC_RX_QUEUE_SIZE             (8U)
+#endif
+
 #ifndef LWMAC_WAKEUP_INTERVAL_MS
 #define LWMAC_WAKEUP_INTERVAL_MS        (100U)
 #endif

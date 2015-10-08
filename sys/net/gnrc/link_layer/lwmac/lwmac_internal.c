@@ -103,6 +103,9 @@ int _alloc_neighbour(lwmac_t* lwmac)
 
     for(int i = 0; i < LWMAC_NEIGHBOUR_COUNT; i++) {
         if(neighbours[i].addr_len == 0) {
+            packet_queue_init(&(neighbours[i].queue),
+                              lwmac->tx._queue_nodes,
+                              (sizeof(lwmac->tx._queue_nodes) / sizeof(packet_queue_node_t)));
             return i;
         }
     }

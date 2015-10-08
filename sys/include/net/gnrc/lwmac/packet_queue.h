@@ -28,10 +28,14 @@
 extern "C" {
 #endif
 
+typedef priority_queue_node_t packet_queue_node_t;
+
 /* TODO: Description */
 typedef struct {
     priority_queue_t queue;
     uint32_t length;
+    packet_queue_node_t* buffer;
+    size_t buffer_size;
 } packet_queue_t;
 
 
@@ -48,9 +52,13 @@ gnrc_pktsnip_t* packet_queue_pop(packet_queue_t* q);
 /* Get first element without removing */
 gnrc_pktsnip_t* packet_queue_head(packet_queue_t* q);
 
-priority_queue_node_t* packet_queue_push(packet_queue_t* q,
-                                         gnrc_pktsnip_t* snip,
-                                         uint32_t priority);
+packet_queue_node_t* packet_queue_push(packet_queue_t* q,
+                                       gnrc_pktsnip_t* snip,
+                                       uint32_t priority);
+
+void packet_queue_init(packet_queue_t* q,
+                       packet_queue_node_t buffer[],
+                       size_t buffer_size);
 
 #ifdef __cplusplus
 }
