@@ -353,8 +353,8 @@ void rtt_handler(uint32_t event)
     case LWMAC_EVENT_RTT_SLEEP_PENDING:
         alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
-        lwmac_set_state(SLEEPING);
         lpm_prevent_sleep = 0;
+        lwmac_set_state(SLEEPING);
         break;
 
     /* Set initial wakeup alarm that starts the cycle */
@@ -514,6 +514,14 @@ static void *_lwmac_thread(void *args)
     packet_queue_init(&lwmac.rx.queue,
                       lwmac.rx._queue_nodes,
                       (sizeof(lwmac.rx._queue_nodes) / sizeof(packet_queue_node_t)));
+
+    /* First neighbour queue is supposed to be broadcast queue */
+    int broadcast_queue_id = _alloc_neighbour(&lwmac);
+    assert(broadcast_queue_id == 0);
+
+    /* Setup broadcast tx queue */
+    uint8_t broadcast_addr[] = {0xff, 0xff};
+    _init_neighbour(_get_neighbour(&lwmac, 0), broadcast_addr, sizeof(broadcast_addr));
 
     /* Start duty cycling */
     lwmac_set_state(START);

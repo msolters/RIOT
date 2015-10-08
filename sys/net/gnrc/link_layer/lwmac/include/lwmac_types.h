@@ -161,7 +161,8 @@ typedef struct {
 typedef struct {
     /* Internal state of transmission state machine */
     lwmac_tx_state_t state;
-    lwmac_tx_neighbour_t neighbours[LWMAC_NEIGHBOUR_COUNT];
+    /* TX queues for neighbouring nodes. First queue is broadcast (+1) */
+    lwmac_tx_neighbour_t neighbours[LWMAC_NEIGHBOUR_COUNT + 1];
     /* Shared buffer for TX queue nodes */
     packet_queue_node_t _queue_nodes[LWMAC_TX_QUEUE_SIZE];
     /* Count how many WRs were sent until WA received */
