@@ -119,25 +119,18 @@ void nmi_default(void)
 /* The hard fault handler requires some stack space as a working area for local
  * variables and printf function calls etc. If the stack pointer is located
  * closer than HARDFAULT_HANDLER_REQUIRED_STACK_SPACE from the lowest address of
- * RAM we will reset the stack pointer to the top of available RAM. */
-#define HARDFAULT_HANDLER_REQUIRED_STACK_SPACE (THREAD_EXTRA_STACKSIZE_PRINTF)
+ * RAM we will reset the stack pointer to the top of available RAM.
+ * Measured from trampoline entry to breakpoint:
+ *  - Cortex-M0+ 344 Byte
+ *  - Cortex-M4  344 Byte
+ */
+#define HARDFAULT_HANDLER_REQUIRED_STACK_SPACE          (344U)
 
-/* Although we make sure that the handler stack never leaves valid RAM, it may
- * still corrupt data in the section preceeding the handler stack. If this
- * happens tell the user. */
-static inline void _check_stack_size_left(uint32_t required)
+static inline int _stack_size_left(uint32_t required)
 {
     uint32_t* sp;
     asm volatile ("mov %[sp], sp" : [sp] "=r" (sp) : : );
-    /* If printf may overflow the handler stack */
-    if( (uint32_t)sp < ((uint32_t)&_sstack + required) ) {
-        uint32_t bytes_corrupt = required + (uint32_t)&_sstack - (uint32_t)sp;
-        printf("RAM may be corrupted now, %"PRIu32" bytes possibly overwritten\n"
-                "%p-%p may be altered\n\n",
-               bytes_corrupt,
-               (void*)((uint32_t)sp - required),
-               &_sstack);
-    }
+    return ( (int)((uint32_t)sp - (uint32_t)&_sstack) - required);
 }
 
 /* Trampoline function to save stack pointer before calling hard fault handler */
@@ -199,11 +192,14 @@ void hard_fault_default(void)
 
 __attribute__((used)) void hard_fault_handler(uint32_t* sp, uint32_t corrupted, uint32_t exc_return, uint32_t* r4_to_r11_stack)
 {
-
     /* Sanity check stack pointer and give additional feedback about hard fault */
     if( corrupted ) {
         puts("Stack pointer corrupted, reset to top of stack");
     } else {
+        int stack_left = _stack_size_left(0);
+        if(stack_left < 0) {
+            puts("ISR stack likely overflowed");
+        }
 #if CPU_HAS_EXTENDED_FAULT_REGISTERS
         /* Copy status register contents to local stack storage, this must be
          * done before any calls to other functions to avoid corrupting the
@@ -260,11 +256,14 @@ __attribute__((used)) void hard_fault_handler(uint32_t* sp, uint32_t corrupted, 
             printf("MMFAR: 0x%08" PRIx32 "\n", mmfar);
         }
 #endif
-        _check_stack_size_left(HARDFAULT_HANDLER_REQUIRED_STACK_SPACE);
         puts("Misc");
         printf("EXC_RET: 0x%08" PRIx32 "\n", exc_return);
         puts("Attempting to reconstruct state for debugging...");
         printf("In GDB:\n  set $pc=0x%lx\n  frame 0\n  bt\n", pc);
+        stack_left = _stack_size_left(HARDFAULT_HANDLER_REQUIRED_STACK_SPACE);
+        if(stack_left < 0) {
+            printf("\nISR stack overflowed by %d bytes max.\n", (-1 * stack_left));
+        }
         __ASM volatile (
             "mov r0, %[sp]\n"
             "ldr r2, [r0, #8]\n"
