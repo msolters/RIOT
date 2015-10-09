@@ -192,14 +192,15 @@ void hard_fault_default(void)
 
 __attribute__((used)) void hard_fault_handler(uint32_t* sp, uint32_t corrupted, uint32_t exc_return, uint32_t* r4_to_r11_stack)
 {
+    /* Check if the ISR stack overflowed previously. Not possible to detect
+     * after output may also have overflowed it. */
+    if(*(&_sstack) != STACK_CANARY_WORD) {
+        puts("\nISR stack overflowed");
+    }
     /* Sanity check stack pointer and give additional feedback about hard fault */
     if( corrupted ) {
         puts("Stack pointer corrupted, reset to top of stack");
     } else {
-        int stack_left = _stack_size_left(0);
-        if(stack_left < 0) {
-            puts("ISR stack likely overflowed");
-        }
 #if CPU_HAS_EXTENDED_FAULT_REGISTERS
         /* Copy status register contents to local stack storage, this must be
          * done before any calls to other functions to avoid corrupting the
@@ -260,7 +261,7 @@ __attribute__((used)) void hard_fault_handler(uint32_t* sp, uint32_t corrupted, 
         printf("EXC_RET: 0x%08" PRIx32 "\n", exc_return);
         puts("Attempting to reconstruct state for debugging...");
         printf("In GDB:\n  set $pc=0x%lx\n  frame 0\n  bt\n", pc);
-        stack_left = _stack_size_left(HARDFAULT_HANDLER_REQUIRED_STACK_SPACE);
+        int stack_left = _stack_size_left(HARDFAULT_HANDLER_REQUIRED_STACK_SPACE);
         if(stack_left < 0) {
             printf("\nISR stack overflowed by %d bytes max.\n", (-1 * stack_left));
         }
