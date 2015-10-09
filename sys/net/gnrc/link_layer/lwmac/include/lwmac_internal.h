@@ -29,6 +29,13 @@
 extern "C" {
 #endif
 
+/* @brief   Type to pass information about parsing */
+typedef struct {
+    lwmac_hdr_t header;     /**< copied lwmac header of packet */
+    l2_addr_t  src_addr;    /**< copied source address of packet  */
+    l2_addr_t  dst_addr;    /**< copied destination address of packet */
+} lwmac_packet_info_t;
+
 /* @brief   Next RTT event must be at least this far in the future
  *
  * When setting an RTT alarm to short in the future it could be possible that
@@ -58,20 +65,19 @@ int _get_dest_address(gnrc_pktsnip_t* pkt, uint8_t* pointer_to_addr[]);
  */
 void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type);
 
-/* @brief Check packet if address matches and is of expected type
+/* @brief Parse a packet and extract important information
  *
- * Check if @p pkt type is @p expected_type and then check if destination
- * address matches own address in @p lwmac.
+ * Copies LwMAC header and addresses, so that @p pkt can be released if payload
+ * is not needed.
  *
- * TODO: also accept broadcast
+ * @param[in]   pkt             packet that will be parsed
+ * @param[out]  info            structure that will hold parsed information
  *
- * @param[in]   pkt             packet that will be checked
- * @param[in]   expected_type   required type
- * @param[in]   lwmac           lwmac state that stores own address
- *
- * @return                      whether the packet should be accepted or not
+ * @return                      0 if correctly parsed
+ * @return                      <0 on error
  */
-bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac_t* lwmac);
+int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info);
+
 
 /* @brief Shortcut to get the state of netdev
  *
@@ -119,6 +125,17 @@ int _time_until_tx_us(lwmac_t* lwmac);
 bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt);
 uint32_t _next_inphase_event(uint32_t last, uint32_t interval);
 
+
+static inline bool _addr_match(l2_addr_t* addr1, l2_addr_t* addr2)
+{
+    assert(addr1);
+    assert(addr2);
+
+    if(addr1->len != addr2->len)
+        return false;
+
+    return (memcmp(addr1->addr, addr2->addr, addr1->len) == 0);
+}
 
 #ifdef __cplusplus
 }

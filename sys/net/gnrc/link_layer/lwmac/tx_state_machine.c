@@ -77,8 +77,10 @@ void lwmac_tx_stop(lwmac_t* lwmac)
     lwmac->tx.state = TX_STATE_STOPPED;
 
     /* Release packet in case of failure */
-    gnrc_pktbuf_release(lwmac->tx.packet);
-    lwmac->tx.packet = NULL;
+    if(lwmac->tx.packet) {
+        gnrc_pktbuf_release(lwmac->tx.packet);
+        lwmac->tx.packet = NULL;
+    }
     lwmac->tx.current_neighbour = NULL;
 }
 
@@ -215,6 +217,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
         gnrc_pktsnip_t* pkt;
         bool found_wa = false;
+        bool postponed = false;
 
         if(lwmac_timeout_is_expired(lwmac, TIMEOUT_WR)) {
             GOTO_TX_STATE(TX_STATE_SEND_WR, true);
@@ -237,21 +240,48 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             /* Dissect lwMAC header */
             gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
 
-            if(_accept_packet(pkt, FRAMETYPE_WA, lwmac)) {
-                LOG_DEBUG("Found WA\n");
-                lwmac_clear_timeout(lwmac, TIMEOUT_WR);
-                lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
-                found_wa = true;
+            /* Parse packet */
+            lwmac_packet_info_t info;
+            int ret = _parse_packet(pkt, &info);
+
+            /* All info needed is parsed, so release pkt already */
+            gnrc_pktbuf_release(pkt);
+
+            if(ret != 0) {
+                LOG_DEBUG("Packet could not be parsed: %i\n", ret);
+                continue;
+            }
+
+            if(info.header.type != FRAMETYPE_WA) {
+                LOG_DEBUG("Packet is not WA: 0x%02x\n", info.header.type);
+                continue;
+            }
+
+            if(!_addr_match(&lwmac->tx.current_neighbour->l2_addr, &info.src_addr)) {
+                LOG_DEBUG("Packet is not from expected destination\n");
                 break;
             }
 
-            /* TODO: If WA received from destination but for other node,
-             *       postpone transcation because destination won't talk to us.
-             */
+            if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
+                /* TODO: seems to have no effect atm, rx is too fragile */
+                /* Destination is talking to another node */
+                _queue_tx_packet(lwmac, lwmac->tx.packet);
+                /* drop pointer so it wont be free'd */
+                lwmac->tx.packet = NULL;
+                postponed = true;
+                break;
+            }
 
-            /* Cleanup packet that was popped and discarded */
-            LOG_DEBUG("Reject pkt @ %p\n", pkt);
-            gnrc_pktbuf_release(pkt);
+            /* All checks passed so this must be a valid WA */
+            lwmac_clear_timeout(lwmac, TIMEOUT_WR);
+            lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
+            found_wa = true;
+            break;
+        }
+
+        if(postponed) {
+            LOG_INFO("Destination is talking to another node, postpone\n");
+            GOTO_TX_STATE(TX_STATE_FAILED, true);
         }
 
         if(!found_wa) {
@@ -268,9 +298,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* Save newly calculated phase for destination */
         lwmac->tx.current_neighbour->phase = new_phase;
         LOG_DEBUG("New phase: %"PRIu32"\n", new_phase);
-
-        /* We don't need the packet anymore */
-        gnrc_pktbuf_release(pkt);
 
         /* We've got our WA, so discard the rest, TODO: no flushing */
         packet_queue_flush(&lwmac->rx.queue);

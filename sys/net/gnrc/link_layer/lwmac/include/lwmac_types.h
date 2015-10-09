@@ -26,6 +26,7 @@
 #include <kernel.h>
 #include <vtimer.h>
 #include <net/gnrc.h>
+#include <net/gnrc/lwmac/lwmac.h>
 #include <net/gnrc/lwmac/hdr.h>
 #include <net/gnrc/lwmac/packet_queue.h>
 
@@ -139,14 +140,14 @@ typedef struct {
     lwmac_rx_state_t state;
     packet_queue_t queue;
     packet_queue_node_t _queue_nodes[LWMAC_RX_QUEUE_SIZE];
-    gnrc_pktsnip_t* packet;
+    l2_addr_t l2_addr;
 } lwmac_rx_t;
 
 #define LWMAC_RX_INIT { \
 /* rx::state */         LWMAC_RX_STATE_INIT, \
 /* rx::queue */         {}, \
 /* rx::_queue_nodes */  {}, \
-/* rx::packet */        NULL \
+/* rx::l2_addr */       LWMAC_L2_ADDR_INIT \
 }
 
 /******************************************************************************/

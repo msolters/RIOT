@@ -53,13 +53,10 @@ void lwmac_rx_start(lwmac_t* lwmac)
     if(lwmac == NULL)
         return;
 
-    if(lwmac->rx.packet) {
-        LOG_ERROR("Starting but pkt is still set\n");
-        gnrc_pktbuf_release(lwmac->rx.packet);
-    }
+    /* RX address should have been reset, probably not stopped then */
+    assert(lwmac->rx.l2_addr.len == 0);
 
     lwmac->rx.state = RX_STATE_INIT;
-    lwmac->rx.packet = NULL;
 }
 
 /******************************************************************************/
@@ -71,9 +68,7 @@ void lwmac_rx_stop(lwmac_t* lwmac)
 
     lwmac_reset_timeouts(lwmac);
     lwmac->rx.state = RX_STATE_STOPPED;
-    /* release WR in case something went wrong */
-    gnrc_pktbuf_release(lwmac->rx.packet);
-    lwmac->rx.packet = NULL;
+    lwmac->rx.l2_addr.len = 0;
 }
 
 /******************************************************************************/
@@ -105,23 +100,39 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             /* Dissect lwMAC header */
             gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
 
-            if(_accept_packet(pkt, FRAMETYPE_WR, lwmac)) {
-                found_wr = true;
-                break;
+            /* Parse packet */
+            lwmac_packet_info_t info;
+            int ret = _parse_packet(pkt, &info);
+
+            /* All info needed is parsed, so release pkt already */
+            gnrc_pktbuf_release(pkt);
+
+            if(ret != 0) {
+                LOG_DEBUG("Packet could not be parsed: %i\n", ret);
+                continue;
             }
 
-            /* Cleanup packet that was popped and discarded */
-            LOG_DEBUG("Reject pkt @ %p\n", pkt);
-            gnrc_pktbuf_release(pkt);
+            if(info.header.type != FRAMETYPE_WR) {
+                LOG_DEBUG("Packet is not WR: 0x%02x\n", info.header.type);
+                continue;
+            }
+
+            if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
+                LOG_DEBUG("Packet is WR but not for us\n");
+                continue;
+            }
+
+            /* Save source address for later addressing */
+            lwmac->rx.l2_addr = info.src_addr;
+
+            found_wr = true;
+            break;
         }
 
         if(!found_wr) {
-            LOG_DEBUG("No WR found\n");
+            LOG_DEBUG("No WR found, stop RX\n");
             GOTO_RX_STATE(RX_STATE_FAILED, true);
         }
-
-        /* Save WR so that we can extract the address later */
-        lwmac->rx.packet = pkt;
 
         // TODO: don't flush queue
         packet_queue_flush(&lwmac->rx.queue);
@@ -134,22 +145,8 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
 
         gnrc_pktsnip_t* pkt;
         gnrc_netif_hdr_t* nethdr_wa;
-        gnrc_netif_hdr_t* nethdr_wr;
-        int addr_len;
 
-        /* Extract NETIF header of WR packet */
-        nethdr_wr = (gnrc_netif_hdr_t*) _gnrc_pktbuf_find(lwmac->rx.packet, GNRC_NETTYPE_NETIF);
-        if(nethdr_wr == NULL) {
-            LOG_ERROR("Couldn't find NETIF header inside WR\n");
-            GOTO_RX_STATE(RX_STATE_FAILED, true);
-        }
-
-        /* Find out address length of destination */
-        addr_len = nethdr_wr->src_l2addr_len;
-        if(addr_len <= 0 || addr_len > 8) {
-            LOG_ERROR("Invalid address length: %i\n", addr_len);
-            GOTO_RX_STATE(RX_STATE_FAILED, true);
-        }
+        assert(lwmac->rx.l2_addr.len != 0);
 
         /* Assemble WA packet */
         lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WA};
@@ -160,7 +157,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             GOTO_RX_STATE(RX_STATE_FAILED, true);
         }
 
-        pkt = gnrc_pktbuf_add(pkt, NULL, sizeof(gnrc_netif_hdr_t) + addr_len, GNRC_NETTYPE_NETIF);
+        pkt = gnrc_pktbuf_add(pkt, NULL, sizeof(gnrc_netif_hdr_t) + lwmac->rx.l2_addr.len, GNRC_NETTYPE_NETIF);
         if(pkt == NULL) {
             LOG_ERROR("Cannot allocate pktbuf of type GNRC_NETTYPE_NETIF\n");
             GOTO_RX_STATE(RX_STATE_FAILED, true);
@@ -171,8 +168,8 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         nethdr_wa = (gnrc_netif_hdr_t*) _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
 
         /* Construct NETIF header and insert address for WA packet */
-        gnrc_netif_hdr_init(nethdr_wa, 0, nethdr_wr->src_l2addr_len);
-        gnrc_netif_hdr_set_dst_addr(nethdr_wa, gnrc_netif_hdr_get_src_addr(nethdr_wr), nethdr_wr->src_l2addr_len);
+        gnrc_netif_hdr_init(nethdr_wa, 0, lwmac->rx.l2_addr.len);
+        gnrc_netif_hdr_set_dst_addr(nethdr_wa, lwmac->rx.l2_addr.addr, lwmac->rx.l2_addr.len);
 
         /* Disable Auto ACK */
         netopt_enable_t autoack = NETOPT_DISABLE;
@@ -189,10 +186,6 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
         _set_netdev_state(lwmac, NETOPT_STATE_TX);
 
-        /* Release WR and WA packets */
-        gnrc_pktbuf_release(lwmac->rx.packet);
-        lwmac->rx.packet = NULL;
-
         /* Enable Auto ACK again for data reception */
         autoack = NETOPT_ENABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
@@ -208,7 +201,11 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             break;
         }
 
-        /* TODO: Maybe check if sending was successful? */
+        /* WA wasn't sent, so restart state machine */
+        if(lwmac->tx_feedback == TX_FEEDBACK_BUSY) {
+            LOG_WARNING("WA could not be sent. Wait for next WR\n");
+            GOTO_RX_STATE(RX_STATE_FAILED, true);
+        }
 
         /* Set timeout for expected data arrival */
         timex_t interval = {0, LWMAC_DATA_DELAY_US};
@@ -230,20 +227,42 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             /* Dissect lwMAC header */
             gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
 
-            if(_accept_packet(pkt, FRAMETYPE_DATA, lwmac)) {
-                LOG_DEBUG("Found DATA!\n");
-                lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
-                found_data = true;
-                break;
-            } else if(_accept_packet(pkt, FRAMETYPE_WR, lwmac)) {
-                /* Sender maybe didn't get the WA */
-                LOG_WARNING("Found a WR while waiting for DATA\n");
+            /* Parse packet */
+            lwmac_packet_info_t info;
+            int ret = _parse_packet(pkt, &info);
+
+            if(ret != 0) {
+                LOG_DEBUG("Packet could not be parsed: %i\n", ret);
+                gnrc_pktbuf_release(pkt);
+                continue;
+            }
+
+            if(!_addr_match(&lwmac->rx.l2_addr, &info.src_addr)) {
+                LOG_DEBUG("Packet is not from destination\n");
+                gnrc_pktbuf_release(pkt);
+                continue;
+            }
+
+            if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
+                LOG_DEBUG("Packet is not for us\n");
+                gnrc_pktbuf_release(pkt);
+                continue;
+            }
+
+            /* Sender maybe didn't get the WA */
+            if(info.header.type == FRAMETYPE_WR) {
+                LOG_INFO("Found a WR while waiting for DATA\n");
                 lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
                 found_wr = true;
                 break;
             }
 
-            gnrc_pktbuf_release(pkt);
+            if(info.header.type == FRAMETYPE_DATA) {
+                LOG_DEBUG("Found DATA!\n");
+                lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
+                found_data = true;
+                break;
+            }
         }
 
         /* If WA got lost we wait for data but we will be hammered with WR
@@ -267,7 +286,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         }
 
         if(!found_data) {
-            LOG_WARNING("No DATA yet\n");
+            LOG_DEBUG("No DATA yet\n");
             break;
         }
 

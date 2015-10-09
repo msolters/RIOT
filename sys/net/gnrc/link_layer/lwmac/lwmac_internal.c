@@ -302,46 +302,49 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 
 /******************************************************************************/
 
-bool _accept_packet(gnrc_pktsnip_t* pkt, lwmac_frame_type_t expected_type, lwmac_t* lwmac)
+int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
 {
     gnrc_netif_hdr_t* netif_hdr;
-    lwmac_hdr_t* lwmac_hdr;
-    uint8_t* own_addr = lwmac->l2_addr.addr;
-    uint8_t *dst_addr;
+    lwmac_hdr_t *lwmac_hdr;
+
+    assert(info != NULL);
 
     netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
     if(netif_hdr == NULL) {
-        DEBUG("[lwmac-int] Reject packet: no NETIF header\n");
-        return false;
+        return -1;
     }
 
     lwmac_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_LWMAC);
     if(lwmac_hdr == NULL) {
-        DEBUG("[lwmac-int] Reject packet: no LWMAC header\n");
-        return false;
+        return -2;
     }
 
-    if(lwmac_hdr->type != expected_type) {
-        DEBUG("[lwmac-int] Reject packet: not of expected type, got 0x%x\n", lwmac_hdr->type);
-        return false;
+    if(netif_hdr->dst_l2addr_len > sizeof(info->dst_addr)) {
+        return -3;
     }
 
-    if(netif_hdr->dst_l2addr_len != lwmac->l2_addr.len) {
-        DEBUG("[lwmac-int] Reject packet: address length mismatch\n");
-        return false;
+    if(netif_hdr->src_l2addr_len > sizeof(info->src_addr)) {
+        return -4;
     }
 
-    /* TODO: detect broadcast */
-    dst_addr =  gnrc_netif_hdr_get_dst_addr(netif_hdr);
-    if(memcmp(own_addr,dst_addr, lwmac->l2_addr.len) != 0) {
-        DEBUG("[lwmac-int] Reject packet: not destined to this node\n");
-        DEBUG("[lwmac-int] Own addr: 0x%x%x, Dest addr: 0x%x%x\n",
-                  own_addr[0], own_addr[1],
-                  dst_addr[0], dst_addr[1]);
-        return false;
+    info->dst_addr.len = netif_hdr->dst_l2addr_len;
+    info->src_addr.len = netif_hdr->src_l2addr_len;
+
+    if(netif_hdr->dst_l2addr_len) {
+        memcpy(info->dst_addr.addr,
+               gnrc_netif_hdr_get_dst_addr(netif_hdr),
+               netif_hdr->dst_l2addr_len);
     }
 
-    return true;
+    if(netif_hdr->src_l2addr_len) {
+        memcpy(info->src_addr.addr,
+               gnrc_netif_hdr_get_src_addr(netif_hdr),
+               netif_hdr->src_l2addr_len);
+    }
+
+    memcpy(&(info->header), lwmac_hdr, sizeof(lwmac_hdr_t));
+
+    return 0;
 }
 
 /******************************************************************************/
