@@ -190,10 +190,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             break;
         }
 
-        /* Set timeout for next WR in case no WA will be received */
-        timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
-        lwmac_set_timeout(lwmac, TIMEOUT_WR, &interval);
-
         /* Set timeout after sending to get the timing right */
         if(lwmac->tx.wr_sent == 0) {
             /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
@@ -202,12 +198,21 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
         }
 
+        lwmac->tx.wr_sent++;
+
+        if(lwmac->tx_feedback == TX_FEEDBACK_BUSY) {
+            LOG_DEBUG("WR could not be sent, retry\n");
+            GOTO_TX_STATE(TX_STATE_SEND_WR, true);
+        }
+
+        /* Set timeout for next WR in case no WA will be received */
+        timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
+        lwmac_set_timeout(lwmac, TIMEOUT_WR, &interval);
+
         /* Debug WR timing */
         LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_neighbour->phase);
         LOG_DEBUG("Phase when sent was:   %"PRIu32"\n", _ticks_to_phase(lwmac->tx.timestamp));
         LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", rtt_get_counter());
-
-        lwmac->tx.wr_sent++;
 
         GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
     }
