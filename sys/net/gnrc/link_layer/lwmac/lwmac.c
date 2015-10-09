@@ -505,6 +505,10 @@ static void *_lwmac_thread(void *args)
      * set to NETOPT_STATE_TX */
     dev->driver->set(dev, NETOPT_PRELOADING, &enable, sizeof(enable));
 
+    /* Don't attempt to send a packet if channel is busy to get timings right */
+    uint8_t csma_retries = 0;
+    dev->driver->set(dev, NETOPT_CSMA_RETRIES, &csma_retries, sizeof(csma_retries));
+
     /* Get own address from netdev */
     lwmac.l2_addr.len = dev->driver->get(dev, NETOPT_ADDRESS, &lwmac.l2_addr.addr, sizeof(lwmac.l2_addr.addr));
     assert(lwmac.l2_addr.len > 0);
