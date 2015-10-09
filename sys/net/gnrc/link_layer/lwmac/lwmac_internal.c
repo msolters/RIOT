@@ -305,7 +305,8 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
 {
     gnrc_netif_hdr_t* netif_hdr;
-    lwmac_hdr_t *lwmac_hdr;
+    lwmac_hdr_t* lwmac_hdr;
+    gnrc_pktsnip_t* lwmac_snip;
 
     assert(info != NULL);
 
@@ -314,7 +315,9 @@ int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
         return -1;
     }
 
-    lwmac_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_LWMAC);
+    /* Dissect lwMAC header */
+    lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
+    lwmac_hdr = lwmac_snip->data;
     if(lwmac_hdr == NULL) {
         return -2;
     }

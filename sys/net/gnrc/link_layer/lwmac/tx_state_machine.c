@@ -237,9 +237,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         {
             LOG_DEBUG("Inspecting pkt @ %p\n", pkt);
 
-            /* Dissect lwMAC header */
-            gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
-
             /* Parse packet */
             lwmac_packet_info_t info;
             int ret = _parse_packet(pkt, &info);
