@@ -47,14 +47,6 @@ extern "C" {
 
 /******************************************************************************/
 
-typedef struct {
-    uint8_t  addr[LWMAC_MAX_L2_ADDR_LEN];
-    uint8_t  len;
-} l2_addr_t;
-#define LWMAC_L2_ADDR_INIT      { {0}, 0 }
-
-/******************************************************************************/
-
 typedef enum {
     UNDEF = -1,
     STOPPED,

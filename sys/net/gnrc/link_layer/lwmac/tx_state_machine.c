@@ -254,6 +254,17 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 continue;
             }
 
+            /* Check if destination is talking to another node first, regardless
+             * of packet type. Destiantion node will sleep after a finished
+             * transaction so there's no point in trying further now. */
+            if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
+                _queue_tx_packet(lwmac, lwmac->tx.packet);
+                /* drop pointer so it wont be free'd */
+                lwmac->tx.packet = NULL;
+                postponed = true;
+                break;
+            }
+
             if(info.header.type != FRAMETYPE_WA) {
                 LOG_DEBUG("Packet is not WA: 0x%02x\n", info.header.type);
                 continue;
@@ -261,16 +272,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
             if(!_addr_match(&lwmac->tx.current_neighbour->l2_addr, &info.src_addr)) {
                 LOG_DEBUG("Packet is not from expected destination\n");
-                break;
-            }
-
-            if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
-                /* TODO: seems to have no effect atm, rx is too fragile */
-                /* Destination is talking to another node */
-                _queue_tx_packet(lwmac, lwmac->tx.packet);
-                /* drop pointer so it wont be free'd */
-                lwmac->tx.packet = NULL;
-                postponed = true;
                 break;
             }
 

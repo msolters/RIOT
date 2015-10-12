@@ -146,7 +146,10 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         assert(lwmac->rx.l2_addr.len != 0);
 
         /* Assemble WA packet */
-        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WA};
+        lwmac_hdr_t lwmac_hdr = {
+                .type = FRAMETYPE_WA,
+                .dst_addr = lwmac->rx.l2_addr,
+        };
 
         pkt = gnrc_pktbuf_add(NULL, &lwmac_hdr, sizeof(lwmac_hdr), GNRC_NETTYPE_LWMAC);
         if(pkt == NULL) {
@@ -167,6 +170,9 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         /* Construct NETIF header and insert address for WA packet */
         gnrc_netif_hdr_init(nethdr_wa, 0, lwmac->rx.l2_addr.len);
         gnrc_netif_hdr_set_dst_addr(nethdr_wa, lwmac->rx.l2_addr.addr, lwmac->rx.l2_addr.len);
+
+        /* Send WA as broadcast*/
+        nethdr_wa->flags |= GNRC_NETIF_HDR_FLAGS_BROADCAST;
 
         /* Disable Auto ACK */
         netopt_enable_t autoack = NETOPT_DISABLE;

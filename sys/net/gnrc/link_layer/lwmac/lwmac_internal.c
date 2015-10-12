@@ -330,16 +330,19 @@ int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
         return -4;
     }
 
-    info->dst_addr.len = netif_hdr->dst_l2addr_len;
-    info->src_addr.len = netif_hdr->src_l2addr_len;
-
-    if(netif_hdr->dst_l2addr_len) {
-        memcpy(info->dst_addr.addr,
-               gnrc_netif_hdr_get_dst_addr(netif_hdr),
-               netif_hdr->dst_l2addr_len);
+    if(netif_hdr->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST) {
+        info->dst_addr = lwmac_hdr->dst_addr;
+    } else {
+        if(netif_hdr->dst_l2addr_len) {
+            info->dst_addr.len = netif_hdr->dst_l2addr_len;
+            memcpy(info->dst_addr.addr,
+                   gnrc_netif_hdr_get_dst_addr(netif_hdr),
+                   netif_hdr->dst_l2addr_len);
+        }
     }
 
     if(netif_hdr->src_l2addr_len) {
+        info->src_addr.len = netif_hdr->src_l2addr_len;
         memcpy(info->src_addr.addr,
                gnrc_netif_hdr_get_src_addr(netif_hdr),
                netif_hdr->src_l2addr_len);
