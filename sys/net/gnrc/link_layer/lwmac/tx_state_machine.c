@@ -293,9 +293,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
         /* WR arrived at destination, so calculate destination wakeup phase
          * based on the timestamp of the WR we sent */
-         uint32_t new_phase;
-         /* If sending WRs took longer than one wakeup interval */
-         new_phase= _ticks_to_phase(lwmac->tx.timestamp - lwmac->last_wakeup);
+         uint32_t new_phase = _ticks_to_phase(lwmac->tx.timestamp);
 
         /* Save newly calculated phase for destination */
         lwmac->tx.current_neighbour->phase = new_phase;
