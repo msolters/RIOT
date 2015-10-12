@@ -230,7 +230,6 @@ bool lwmac_update(void)
 
     case RECEIVING:
     {
-        char* rx_success = "";
         lwmac_rx_state_t state_rx = lwmac.rx.state;
 
         switch(state_rx)
@@ -242,9 +241,12 @@ bool lwmac_update(void)
             break;
         }
         case RX_STATE_FAILED:
-            rx_success = "NOT ";
+            LOG_INFO("Reception finished NOT successfully\n");
+            lwmac_rx_stop(&lwmac);
+            lwmac_set_state(LISTENING);
+            break;
         case RX_STATE_SUCCESSFUL:
-            LOG_INFO("Reception finished %ssuccessfully\n", rx_success);
+            LOG_INFO("Reception finished successfully\n");
             lwmac_rx_stop(&lwmac);
             lwmac_set_state(SLEEPING);
             break;
