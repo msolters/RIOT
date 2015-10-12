@@ -303,7 +303,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
         /* Save newly calculated phase for destination */
         lwmac->tx.current_neighbour->phase = new_phase;
-        LOG_DEBUG("New phase: %"PRIu32"\n", new_phase);
+        LOG_INFO("New phase: %"PRIu32"\n", new_phase);
 
         /* We've got our WA, so discard the rest, TODO: no flushing */
         packet_queue_flush(&lwmac->rx.queue);
