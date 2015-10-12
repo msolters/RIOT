@@ -102,6 +102,11 @@ extern "C" {
 #define LWMAC_MAX_L2_ADDR_LEN           (2U)
 #endif
 
+/* CSMA retries for DATA packet after WR->WA was successful. Too many retries
+ * may timeout the receiver, refer LWMAC_DATA_DELAY_US */
+#ifndef LWMAC_DATA_CSMA_RETRIES
+#define LWMAC_DATA_CSMA_RETRIES         (3U)
+#endif
 
 /**
  * @brief   Initialize an instance of the LWMAC layer

@@ -60,6 +60,11 @@ void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_neighbour_t* n
         gnrc_pktbuf_release(lwmac->tx.packet);
     }
 
+    /* Don't attempt to send a WR if channel is busy to get timings right, will
+     * be changed for sending DATA packet */
+    uint8_t csma_retries = 0;
+    lwmac->netdev->driver->set(lwmac->netdev, NETOPT_CSMA_RETRIES, &csma_retries, sizeof(csma_retries));
+
     lwmac->tx.packet = pkt;
     lwmac->tx.current_neighbour = neighbour;
     lwmac->tx.state = TX_STATE_INIT;
@@ -314,6 +319,11 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* Enable Auto ACK again */
         netopt_enable_t autoack = NETOPT_ENABLE;
         lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
+
+        /* It's okay to retry sending DATA. Timing doesn't matter anymore and
+         * destination is waiting for a certain amount of time. */
+        uint8_t csma_retries = LWMAC_DATA_CSMA_RETRIES;
+        lwmac->netdev->driver->set(lwmac->netdev, NETOPT_CSMA_RETRIES, &csma_retries, sizeof(csma_retries));
 
         /* Insert lwMAC header above NETIF header */
         lwmac_hdr_t hdr = {FRAMETYPE_DATA};
