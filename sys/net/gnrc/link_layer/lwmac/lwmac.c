@@ -109,6 +109,10 @@ void lwmac_set_state(lwmac_state_t newstate)
         rtt_handler(LWMAC_EVENT_RTT_RESUME);
         break;
 
+    case SLEEPING:
+        lwmac_clear_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD);
+        break;
+
     default:
         break;
     }
@@ -259,8 +263,6 @@ bool lwmac_update(void)
             lwmac_rx_stop(&lwmac);
             /* Dispatch received packets, timing is not critical anymore */
             _dispatch(lwmac.rx.dispatch_buffer);
-            /* Timeout is not needed anymore */
-            lwmac_clear_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD);
             /* Go back to sleep after successful transaction */
             lwmac_set_state(SLEEPING);
             break;
