@@ -215,8 +215,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         }
 
         /* Set timeout for expected data arrival */
-        timex_t interval = {0, LWMAC_DATA_DELAY_US};
-        lwmac_set_timeout(lwmac, TIMEOUT_DATA, &interval);
+        lwmac_set_timeout(lwmac, TIMEOUT_DATA, LWMAC_DATA_DELAY_US);
 
         GOTO_RX_STATE(RX_STATE_WAIT_FOR_DATA, false);
     }

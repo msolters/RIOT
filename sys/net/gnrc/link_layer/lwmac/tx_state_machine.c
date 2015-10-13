@@ -200,9 +200,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* Set timeout after sending to get the timing right */
         if(lwmac->tx.wr_sent == 0) {
             /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
-            timex_t interval = {0, (LWMAC_WAKEUP_INTERVAL_MS /* + LWMAC_WAKEUP_DURATION_MS */ ) * 1000};
-            LOG_DEBUG("Timeout after: %"PRIu32" us\n", interval.microseconds);
-            lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, &interval);
+            lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, LWMAC_WAKEUP_INTERVAL_MS * 1000);
         }
 
         lwmac->tx.wr_sent++;
@@ -213,8 +211,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         }
 
         /* Set timeout for next WR in case no WA will be received */
-        timex_t interval = {0, LWMAC_TIME_BETWEEN_WR_US};
-        lwmac_set_timeout(lwmac, TIMEOUT_WR, &interval);
+        lwmac_set_timeout(lwmac, TIMEOUT_WR, LWMAC_TIME_BETWEEN_WR_US);
 
         /* Debug WR timing */
         LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_neighbour->phase);

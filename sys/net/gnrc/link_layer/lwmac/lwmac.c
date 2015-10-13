@@ -199,10 +199,7 @@ bool lwmac_update(void)
                 }
 
                 time_until_tx -= LWMAC_WR_PREPARATION_US;
-
-                timex_t interval = {0, time_until_tx};
-                LOG_DEBUG("Schedule wakeup for TX in: %"PRIu32" us\n", interval.microseconds);
-                lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, &interval);
+                lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, time_until_tx);
 
                 /* Stop dutycycling, we're preparing to send. This prevents the
                  * timeout arriving late, so that the destination phase would
@@ -554,9 +551,7 @@ static void *_lwmac_thread(void *args)
         /* An lwmac timeout occured */
         case LWMAC_EVENT_TIMEOUT_TYPE:
         {
-            lwmac_timeout_t* timeout = (lwmac_timeout_t*) msg.content.ptr;
-            LOG_DEBUG("%s expiring\n", lwmac_timeout_names[timeout->type]);
-            timeout->expired = true;
+            lwmac_timeout_make_expire((lwmac_timeout_t*) msg.content.ptr);
             lwmac_schedule_update();
             break;
         }

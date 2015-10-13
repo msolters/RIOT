@@ -29,6 +29,7 @@
 #include <net/gnrc/lwmac/lwmac.h>
 #include <net/gnrc/lwmac/hdr.h>
 #include <net/gnrc/lwmac/packet_queue.h>
+#include "timeout.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,29 +89,6 @@ typedef enum {
     RX_STATE_FAILED         /**< Reception over, but nothing received */
 } lwmac_rx_state_t;
 #define LWMAC_RX_STATE_INIT RX_STATE_STOPPED
-
-/******************************************************************************/
-
-typedef enum {
-    TIMEOUT_DISABLED = 0,
-    TIMEOUT_WR,
-    TIMEOUT_NO_RESPONSE,
-    TIMEOUT_WA,
-    TIMEOUT_DATA,
-    TIMEOUT_WAIT_FOR_DEST_WAKEUP,
-} lwmac_timeout_type_t;
-
-extern char* lwmac_timeout_names[];
-
-/******************************************************************************/
-
-typedef struct {
-    xtimer_t timer;
-    msg_t msg;
-    /* If type != DISABLED, this indicates if timeout has expired */
-    bool expired;
-    lwmac_timeout_type_t type;
-} lwmac_timeout_t;
 
 /******************************************************************************/
 
@@ -186,7 +164,7 @@ typedef struct {
 
 /******************************************************************************/
 
-typedef struct {
+typedef struct lwmac {
     /* PID of lwMAC thread */
     kernel_pid_t pid;
     /* NETDEV device used by lwMAC */
