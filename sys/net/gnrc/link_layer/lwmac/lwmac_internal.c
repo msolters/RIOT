@@ -383,10 +383,8 @@ netopt_state_t _get_netdev_state(lwmac_t* lwmac)
 /* Parameters in rtt timer ticks */
 uint32_t _next_inphase_event(uint32_t last, uint32_t interval)
 {
-    uint32_t counter = rtt_get_counter();
-
     /* Counter did overflow since last wakeup */
-    if(counter < last)
+    if(rtt_get_counter() < last)
     {
         /* TODO: Not sure if this was tested :) */
         uint32_t tmp = -last;
@@ -396,7 +394,7 @@ uint32_t _next_inphase_event(uint32_t last, uint32_t interval)
     }
 
     /* Add margin to next wakeup so that it will be at least 2ms in the future */
-    while(last < (counter + LWMAC_RTT_EVENT_MARGIN_TICKS))
+    while(last < (rtt_get_counter() + LWMAC_RTT_EVENT_MARGIN_TICKS))
     {
         last += interval;
     }
