@@ -295,7 +295,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
          * machine (see above). */
         if( (lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) &&
             (!lwmac->rx_started) ) {
-            LOG_ERROR("DATA timed out\n");
+            LOG_INFO("DATA timed out\n");
             GOTO_RX_STATE(RX_STATE_FAILED, true);
         }
 

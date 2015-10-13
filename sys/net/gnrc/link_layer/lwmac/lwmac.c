@@ -253,13 +253,15 @@ bool lwmac_update(void)
             break;
         }
         case RX_STATE_FAILED:
-            LOG_INFO("Reception finished NOT successfully\n");
+            /* This may happen frequently because we'll receive WA from
+             * every node in range. */
+            LOG_DEBUG("Reception was NOT successful\n");
             lwmac_rx_stop(&lwmac);
             /* Restart */
             lwmac_set_state(LISTENING);
             break;
         case RX_STATE_SUCCESSFUL:
-            LOG_INFO("Reception finished successfully\n");
+            LOG_INFO("Reception was successful\n");
             lwmac_rx_stop(&lwmac);
             /* Dispatch received packets, timing is not critical anymore */
             _dispatch(lwmac.rx.dispatch_buffer);
