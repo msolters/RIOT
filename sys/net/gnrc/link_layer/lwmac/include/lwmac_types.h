@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <kernel.h>
-#include <vtimer.h>
+#include <xtimer.h>
 #include <net/gnrc.h>
 #include <net/gnrc/lwmac/lwmac.h>
 #include <net/gnrc/lwmac/hdr.h>
@@ -105,13 +105,10 @@ extern char* lwmac_timeout_names[];
 /******************************************************************************/
 
 typedef struct {
-    /* Timer used for timeouts */
-    vtimer_t timer;
-    /* When to expire */
-    timex_t interval;
+    xtimer_t timer;
+    msg_t msg;
     /* If type != DISABLED, this indicates if timeout has expired */
     bool expired;
-    /* Lastest timeout that occurred and hasn't yet been acknowledged */
     lwmac_timeout_type_t type;
 } lwmac_timeout_t;
 

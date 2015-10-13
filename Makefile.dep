@@ -382,7 +382,7 @@ ifneq (,$(filter gnrc_netdev2,$(USEMODULE)))
 endif
 
 ifneq (,$(filter gnrc_lwmac,$(USEMODULE)))
-  USEMODULE += vtimer
+  USEMODULE += xtimer
 endif
 
 ifneq (,$(filter hih6130,$(USEMODULE)))

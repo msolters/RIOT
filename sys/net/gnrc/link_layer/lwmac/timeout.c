@@ -16,7 +16,7 @@
  * @}
  */
 
-#include <vtimer.h>
+#include <xtimer.h>
 #include <net/gnrc/lwmac/lwmac.h>
 
 #include "include/timeout.h"
@@ -37,7 +37,7 @@ char* lwmac_timeout_names[] = {
 
 static inline void _lwmac_clear_timeout(lwmac_timeout_t* timeout)
 {
-    vtimer_remove(&timeout->timer);
+    xtimer_remove(&(timeout->timer));
     timeout->type = TIMEOUT_DISABLED;
 }
 
@@ -111,12 +111,10 @@ void lwmac_set_timeout(lwmac_t* lwmac, lwmac_timeout_type_t type, timex_t* inter
     if( (timeout = _lwmac_acquire_timeout(lwmac, type)) )
     {
         timeout->expired = false;
-        timeout->interval = *interval;
-        vtimer_set_msg(&timeout->timer,
-                       timeout->interval,
-                       lwmac->pid,
-                       LWMAC_EVENT_TIMEOUT_TYPE,
-                       (void*) timeout);
+        timeout->msg.type = LWMAC_EVENT_TIMEOUT_TYPE;
+        timeout->msg.content.ptr = (void*) timeout;
+        xtimer_set_msg(&(timeout->timer), interval->microseconds,
+                       &(timeout->msg), lwmac->pid);
     }
 }
 
