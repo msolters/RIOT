@@ -294,10 +294,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             break;
         }
 
-        if (!gnrc_netapi_dispatch_receive(pkt->type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
-            LOG_INFO("Unable to forward packet of type %i\n", pkt->type);
-            gnrc_pktbuf_release(pkt);
-        }
+        _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
 
         GOTO_RX_STATE(RX_STATE_SUCCESSFUL, true);
     }

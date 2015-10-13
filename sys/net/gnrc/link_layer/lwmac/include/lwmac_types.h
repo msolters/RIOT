@@ -133,13 +133,15 @@ typedef struct {
     packet_queue_t queue;
     packet_queue_node_t _queue_nodes[LWMAC_RX_QUEUE_SIZE];
     l2_addr_t l2_addr;
+    gnrc_pktsnip_t* dispatch_buffer[LWMAC_DISPATCH_BUFFER_SIZE];
 } lwmac_rx_t;
 
 #define LWMAC_RX_INIT { \
-/* rx::state */         LWMAC_RX_STATE_INIT, \
-/* rx::queue */         {}, \
-/* rx::_queue_nodes */  {}, \
-/* rx::l2_addr */       LWMAC_L2_ADDR_INIT \
+/* rx::state */             LWMAC_RX_STATE_INIT, \
+/* rx::queue */             {}, \
+/* rx::_queue_nodes */      {}, \
+/* rx::l2_addr */           LWMAC_L2_ADDR_INIT, \
+/* rx::dispatch_buffer */   {}, \
 }
 
 /******************************************************************************/

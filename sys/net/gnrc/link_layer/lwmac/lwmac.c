@@ -248,6 +248,9 @@ bool lwmac_update(void)
         case RX_STATE_SUCCESSFUL:
             LOG_INFO("Reception finished successfully\n");
             lwmac_rx_stop(&lwmac);
+            /* Dispatch received packets, timing is not critical anymore */
+            _dispatch(lwmac.rx.dispatch_buffer);
+            /* Go back to sleep after successful transaction */
             lwmac_set_state(SLEEPING);
             break;
         default:

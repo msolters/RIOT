@@ -127,6 +127,9 @@ int _time_until_tx_us(lwmac_t* lwmac);
 bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt);
 uint32_t _next_inphase_event(uint32_t last, uint32_t interval);
 
+int _dispatch_defer(gnrc_pktsnip_t* buffer[], gnrc_pktsnip_t* pkt);
+
+void _dispatch(gnrc_pktsnip_t* buffer[]);
 
 static inline bool _addr_match(l2_addr_t* addr1, l2_addr_t* addr2)
 {

@@ -430,3 +430,39 @@ void lwmac_print_hdr(lwmac_hdr_t* hdr)
 
     printf("  Raw:  0x%02x\n", hdr->type);
 }
+
+/******************************************************************************/
+
+int _dispatch_defer(gnrc_pktsnip_t* buffer[], gnrc_pktsnip_t* pkt)
+{
+    assert(buffer != NULL);
+
+    for(unsigned i = 0; i < LWMAC_DISPATCH_BUFFER_SIZE; i++) {
+        if(buffer[i] == NULL) {
+            buffer[i] = pkt;
+            return 0;
+        }
+    }
+
+    DEBUG("[lwmac] Dispatch buffer full, dropping packet\n");
+    gnrc_pktbuf_release(pkt);
+
+    return -1;
+}
+
+/******************************************************************************/
+
+void _dispatch(gnrc_pktsnip_t* buffer[])
+{
+    assert(buffer != NULL);
+
+    for(unsigned i = 0; i < LWMAC_DISPATCH_BUFFER_SIZE; i++) {
+        if(buffer[i]) {
+            if (!gnrc_netapi_dispatch_receive(buffer[i]->type, GNRC_NETREG_DEMUX_CTX_ALL, buffer[i])) {
+                DEBUG("Unable to forward packet of type %i\n", buffer[i]->type);
+                gnrc_pktbuf_release(buffer[i]);
+            }
+            buffer[i] = NULL;
+        }
+    }
+}

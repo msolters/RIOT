@@ -108,6 +108,12 @@ extern "C" {
 #define LWMAC_DATA_CSMA_RETRIES         (3U)
 #endif
 
+/* Store broadcast packets until unicast transaction has finished. This buffer
+ * will also hold the received unicast packet. */
+#ifndef LWMAC_DISPATCH_BUFFER_SIZE
+#define LWMAC_DISPATCH_BUFFER_SIZE      (4U)
+#endif
+
 /**
  * @brief   Initialize an instance of the LWMAC layer
  *
