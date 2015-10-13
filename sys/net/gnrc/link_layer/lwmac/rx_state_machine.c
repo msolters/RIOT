@@ -105,13 +105,19 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             lwmac_packet_info_t info;
             int ret = _parse_packet(pkt, &info);
 
-            /* All info needed is parsed, so release pkt already */
-            gnrc_pktbuf_release(pkt);
-
             if(ret != 0) {
                 LOG_DEBUG("Packet could not be parsed: %i\n", ret);
+                gnrc_pktbuf_release(pkt);
                 continue;
             }
+
+            if(info.header.type == FRAMETYPE_BROADCAST) {
+                _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
+                continue;
+            }
+
+            /* No need to keep pkt anymore */
+            gnrc_pktbuf_release(pkt);
 
             if(info.header.type != FRAMETYPE_WR) {
                 LOG_DEBUG("Packet is not WR: 0x%02x\n", info.header.type);
@@ -237,6 +243,11 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             if(ret != 0) {
                 LOG_DEBUG("Packet could not be parsed: %i\n", ret);
                 gnrc_pktbuf_release(pkt);
+                continue;
+            }
+
+            if(info.header.type == FRAMETYPE_BROADCAST) {
+                _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
                 continue;
             }
 

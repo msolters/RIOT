@@ -250,17 +250,18 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             lwmac_packet_info_t info;
             int ret = _parse_packet(pkt, &info);
 
-            /* All info needed is parsed, so release pkt already */
-            gnrc_pktbuf_release(pkt);
-
             if(ret != 0) {
                 LOG_DEBUG("Packet could not be parsed: %i\n", ret);
                 continue;
             }
 
-            /* Check if destination is talking to another node first, regardless
-             * of packet type. Destiantion node will sleep after a finished
-             * transaction so there's no point in trying further now. */
+            if(info.header.type == FRAMETYPE_BROADCAST) {
+                _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
+            }
+
+            /* Check if destination is talking to another node. It will sleep
+             * after a finished transaction so there's no point in trying any
+             * further now. */
             if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
                 _queue_tx_packet(lwmac, lwmac->tx.packet);
                 /* drop pointer so it wont be free'd */
@@ -268,6 +269,14 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 postponed = true;
                 break;
             }
+
+            if(info.header.type == FRAMETYPE_BROADCAST) {
+                /* Broadcast was not from destination node, so continue */
+                continue;
+            }
+
+            /* No need to keep pkt anymore */
+            gnrc_pktbuf_release(pkt);
 
             if(info.header.type != FRAMETYPE_WA) {
                 LOG_DEBUG("Packet is not WA: 0x%02x\n", info.header.type);
