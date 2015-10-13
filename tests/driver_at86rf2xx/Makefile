@@ -70,5 +70,6 @@ USEMODULE += shell_commands
 USEMODULE += ps
 
 CFLAGS += -DDEVELHELP
+CFLAGS += -fdiagnostics-color=auto
 
 include $(RIOTBASE)/Makefile.include
