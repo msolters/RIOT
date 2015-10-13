@@ -220,6 +220,17 @@ bool lwmac_update(void)
         break;
 
     case LISTENING:
+        /* Set timeout for if there's no successful rx transaction that will
+         * change state to SLEEPING. */
+        if(!lwmac_timeout_is_running(&lwmac, TIMEOUT_WAKEUP_PERIOD)) {
+            lwmac_set_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD,
+                                (LWMAC_WAKEUP_DURATION_MS * 1000) );
+        } else if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAKEUP_PERIOD)) {
+            /* Dispatch first as there still may be broadcast packets. */
+            _dispatch(lwmac.rx.dispatch_buffer);
+            lwmac_set_state(SLEEPING);
+        }
+
         if(packet_queue_length(&lwmac.rx.queue) > 0) {
             lwmac_set_state(RECEIVING);
         }
@@ -240,6 +251,7 @@ bool lwmac_update(void)
         case RX_STATE_FAILED:
             LOG_INFO("Reception finished NOT successfully\n");
             lwmac_rx_stop(&lwmac);
+            /* Restart */
             lwmac_set_state(LISTENING);
             break;
         case RX_STATE_SUCCESSFUL:
@@ -247,6 +259,8 @@ bool lwmac_update(void)
             lwmac_rx_stop(&lwmac);
             /* Dispatch received packets, timing is not critical anymore */
             _dispatch(lwmac.rx.dispatch_buffer);
+            /* Timeout is not needed anymore */
+            lwmac_clear_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD);
             /* Go back to sleep after successful transaction */
             lwmac_set_state(SLEEPING);
             break;
