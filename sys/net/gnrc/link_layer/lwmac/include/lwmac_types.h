@@ -199,7 +199,7 @@ typedef struct lwmac {
 /* rx */                    LWMAC_RX_INIT, \
 /* tx */                    LWMAC_TX_INIT, \
 /* tx_feedback */           LWMAC_TX_FEEDBACK_INIT, \
-/* timeouts */              {}, \
+/* timeouts */              { LWMAC_TIMEOUT_INIT }, \
 /* last_wakeup */           0, \
 /* dutycycling_active */    false, \
 /* needs_rescheduling */    false \

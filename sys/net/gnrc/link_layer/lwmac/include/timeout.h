@@ -48,6 +48,7 @@ typedef struct {
     bool expired;
     lwmac_timeout_type_t type;
 } lwmac_timeout_t;
+#define LWMAC_TIMEOUT_INIT  { {}, {}, false, TIMEOUT_DISABLED }
 
 void lwmac_set_timeout(lwmac_t* lwmac, lwmac_timeout_type_t type, uint32_t offset);
 
