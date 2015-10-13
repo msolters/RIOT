@@ -527,6 +527,9 @@ static void *_lwmac_thread(void *args)
     uint8_t broadcast_addr[] = {0xff, 0xff};
     _init_neighbour(_get_neighbour(&lwmac, 0), broadcast_addr, sizeof(broadcast_addr));
 
+    /* Reset all timeouts just to be sure */
+    lwmac_reset_timeouts(&lwmac);
+
     /* Start duty cycling */
     lwmac_set_state(START);
 

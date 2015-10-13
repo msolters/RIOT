@@ -70,7 +70,7 @@ void lwmac_rx_stop(lwmac_t* lwmac)
     if(!lwmac)
         return;
 
-    lwmac_reset_timeouts(lwmac);
+    lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
     lwmac->rx.state = RX_STATE_STOPPED;
     lwmac->rx.l2_addr.len = 0;
 }
@@ -88,7 +88,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
     switch(lwmac->rx.state)
     {
     case RX_STATE_INIT:
-        lwmac_reset_timeouts(lwmac);
+        lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
         GOTO_RX_STATE(RX_STATE_WAIT_FOR_WR, true);
 
     case RX_STATE_WAIT_FOR_WR:
@@ -300,7 +300,6 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
     }
     case RX_STATE_SUCCESSFUL:
     case RX_STATE_FAILED:
-        lwmac_reset_timeouts(lwmac);
         break;
     case RX_STATE_STOPPED:
         LOG_DEBUG("Reception state machine is stopped\n");

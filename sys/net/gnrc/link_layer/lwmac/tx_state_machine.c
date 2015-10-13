@@ -78,7 +78,8 @@ void lwmac_tx_stop(lwmac_t* lwmac)
     if(!lwmac)
         return;
 
-    lwmac_reset_timeouts(lwmac);
+    lwmac_clear_timeout(lwmac, TIMEOUT_WR);
+    lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
     lwmac->tx.state = TX_STATE_STOPPED;
 
     /* Release packet in case of failure */
@@ -103,7 +104,8 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
     {
     case TX_STATE_INIT:
     {
-        lwmac_reset_timeouts(lwmac);
+        lwmac_clear_timeout(lwmac, TIMEOUT_WR);
+        lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
 
         GOTO_TX_STATE(TX_STATE_SEND_WR, true);
     }
@@ -358,7 +360,6 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
     }
     case TX_STATE_SUCCESSFUL:
     case TX_STATE_FAILED:
-        lwmac_reset_timeouts(lwmac);
         break;
     case TX_STATE_STOPPED:
         LOG_DEBUG("Transmission state machine is stopped\n");
