@@ -252,11 +252,14 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
 
             if(ret != 0) {
                 LOG_DEBUG("Packet could not be parsed: %i\n", ret);
+                gnrc_pktbuf_release(pkt);
                 continue;
             }
 
             if(info.header.type == FRAMETYPE_BROADCAST) {
                 _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
+                /* Drop pointer to it can't get released */
+                pkt = NULL;
             }
 
             /* Check if destination is talking to another node. It will sleep
@@ -267,6 +270,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 /* drop pointer so it wont be free'd */
                 lwmac->tx.packet = NULL;
                 postponed = true;
+                gnrc_pktbuf_release(pkt);
                 break;
             }
 
