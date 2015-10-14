@@ -187,7 +187,7 @@ uint32_t _ticks_until_phase(uint32_t phase)
 /******************************************************************************/
 
 /* Find the neighbour that has a packet queued and is next for sending */
-int _next_tx_neighbour(lwmac_t* lwmac)
+lwmac_tx_neighbour_t* _next_tx_neighbour(lwmac_t* lwmac)
 {
     int next = -1;
 
@@ -211,20 +211,19 @@ int _next_tx_neighbour(lwmac_t* lwmac)
         }
     }
 
-    return next;
+    return (next < 0) ? NULL : &(lwmac->tx.neighbours[next]);
 }
 
 /******************************************************************************/
 
 int _time_until_tx_us(lwmac_t* lwmac)
 {
-    int neighbour_id = _next_tx_neighbour(lwmac);
+    lwmac_tx_neighbour_t* neighbour = _next_tx_neighbour(lwmac);
 
-    if(neighbour_id < 0) {
+    if(neighbour == NULL) {
         return -1;
     }
-    uint32_t neighbour_phase = lwmac->tx.neighbours[neighbour_id].phase;
-    return RTT_TICKS_TO_US(_ticks_until_phase(neighbour_phase));
+    return RTT_TICKS_TO_US(_ticks_until_phase(neighbour->phase));
 }
 
 /******************************************************************************/

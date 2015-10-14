@@ -184,26 +184,29 @@ bool lwmac_update(void)
     switch(lwmac.state)
     {
     case SLEEPING:
-
         /* If a packet is scheduled, no other (possible earlier) packet can be
          * sent before the first one is handled
          */
         if( !lwmac_timeout_is_running(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP) ) {
 
-            /* Time in microseconds when the earliest (phase) destination node
-             * wakes up that we have packets for. */
-            int time_until_tx = _time_until_tx_us(&lwmac);
+            lwmac_tx_neighbour_t* neighbour = _next_tx_neighbour(&lwmac);
 
-            if(time_until_tx > 0) {
+            if(neighbour != NULL) {
+                /* Offset in microseconds when the earliest (phase) destination
+                 * node wakes up that we have packets for. */
+                int time_until_tx = RTT_TICKS_TO_US(_ticks_until_phase(neighbour->phase));
+
                 /* If there's not enough time to prepare a WR to catch the phase
                  * postpone to next interval */
-                // TODO: move this check into _time_until_tx_us()
                 if (time_until_tx < LWMAC_WR_PREPARATION_US) {
                     time_until_tx += LWMAC_WAKEUP_INTERVAL_MS * 1000;
                 }
 
                 time_until_tx -= LWMAC_WR_PREPARATION_US;
                 lwmac_set_timeout(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP, time_until_tx);
+
+                /* Register neighbour to be the next */
+                lwmac.tx.current_neighbour = neighbour;
 
                 /* Stop dutycycling, we're preparing to send. This prevents the
                  * timeout arriving late, so that the destination phase would
@@ -289,25 +292,16 @@ bool lwmac_update(void)
         case TX_STATE_STOPPED:
         {
             gnrc_pktsnip_t* pkt;
-            int neighbour_id;
-            lwmac_tx_neighbour_t* neighbour;
 
-            neighbour_id = _next_tx_neighbour(&lwmac);
-            if(neighbour_id < 0) {
-                /* Shouldn't happen, never observed this case */
-                LOG_ERROR("In 'TRANSMITTING' but nothing to send\n");
-                lwmac_set_state(SLEEPING);
-            }
-            neighbour = _get_neighbour(&lwmac, neighbour_id);
-
-
-            if( (pkt = packet_queue_pop(&neighbour->queue)) )
+            if( (pkt = packet_queue_pop(&lwmac.tx.current_neighbour->queue)) )
             {
-                lwmac_tx_start(&lwmac, pkt, neighbour);
+                lwmac_tx_start(&lwmac, pkt, lwmac.tx.current_neighbour);
                 lwmac_tx_update(&lwmac);
             } else {
-                /* Shouldn't happen, never observed this case */
-                LOG_ERROR("Packet from neighbour's queue (#%d) invalid\n", neighbour_id);
+                /* Shouldn't happen, but never observed this case */
+                int id = (lwmac.tx.current_neighbour - lwmac.tx.neighbours);
+                id /= sizeof(lwmac.tx.current_neighbour);
+                LOG_ERROR("Packet from neighbour's queue (#%d) invalid\n", id);
                 lwmac_schedule_update();
             }
             break;

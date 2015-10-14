@@ -122,7 +122,7 @@ uint32_t _phase_to_ticks(uint32_t phase);
 uint32_t _phase_now(void);
 uint32_t _ticks_until_phase(uint32_t phase);
 
-int _next_tx_neighbour(lwmac_t* lwmac);
+lwmac_tx_neighbour_t* _next_tx_neighbour(lwmac_t* lwmac);
 int _time_until_tx_us(lwmac_t* lwmac);
 bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt);
 uint32_t _next_inphase_event(uint32_t last, uint32_t interval);
