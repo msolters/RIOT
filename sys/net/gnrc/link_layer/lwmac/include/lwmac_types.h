@@ -196,7 +196,7 @@ typedef struct lwmac {
 /* netdev */                NULL, \
 /* state */                 UNDEF, \
 /* rx_in_progress */        false, \
-/* l2_addr */               {}, \
+/* l2_addr */               LWMAC_L2_ADDR_INIT, \
 /* rx */                    LWMAC_RX_INIT, \
 /* tx */                    LWMAC_TX_INIT, \
 /* tx_feedback */           LWMAC_TX_FEEDBACK_INIT, \

@@ -322,8 +322,12 @@ bool lwmac_update(void)
              * automatic resending here, we did our best.
              */
         case TX_STATE_SUCCESSFUL:
-            LOG_INFO("Transmission was %ssuccessful (%"PRIu32" WRs sent)\n",
-                     tx_success, lwmac.tx.wr_sent);
+            if(lwmac.tx.current_neighbour == &(lwmac.tx.neighbours[0])) {
+                LOG_INFO("Broadcast transmission done\n");
+            } else {
+                LOG_INFO("Transmission was %ssuccessful (%"PRIu32" WRs sent)\n",
+                         tx_success, lwmac.tx.wr_sent);
+            }
             lwmac_tx_stop(&lwmac);
             lwmac_set_state(SLEEPING);
             break;

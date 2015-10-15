@@ -198,7 +198,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             GOTO_TX_STATE(TX_STATE_FAILED, true);
         }
 
-        /* We wouldn't get here if add the NETIF header had failed, so no
+        /* We wouldn't get here if adding the NETIF header had failed, so no
            sanity checks needed */
         nethdr = (gnrc_netif_hdr_t*) _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
 
