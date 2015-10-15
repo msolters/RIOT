@@ -39,6 +39,8 @@ typedef enum {
     TIMEOUT_DATA,
     TIMEOUT_WAIT_FOR_DEST_WAKEUP,
     TIMEOUT_WAKEUP_PERIOD,
+    TIMEOUT_NEXT_BROADCAST,
+    TIMEOUT_BROADCAST_END,
 } lwmac_timeout_type_t;
 
 typedef struct {

@@ -60,11 +60,6 @@ void lwmac_tx_start(lwmac_t* lwmac, gnrc_pktsnip_t* pkt, lwmac_tx_neighbour_t* n
         gnrc_pktbuf_release(lwmac->tx.packet);
     }
 
-    /* Don't attempt to send a WR if channel is busy to get timings right, will
-     * be changed for sending DATA packet */
-    uint8_t csma_retries = 0;
-    lwmac->netdev->driver->set(lwmac->netdev, NETOPT_CSMA_RETRIES, &csma_retries, sizeof(csma_retries));
-
     lwmac->tx.packet = pkt;
     lwmac->tx.current_neighbour = neighbour;
     lwmac->tx.state = TX_STATE_INIT;
@@ -80,6 +75,8 @@ void lwmac_tx_stop(lwmac_t* lwmac)
 
     lwmac_clear_timeout(lwmac, TIMEOUT_WR);
     lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
+    lwmac_clear_timeout(lwmac, TIMEOUT_NEXT_BROADCAST);
+    lwmac_clear_timeout(lwmac, TIMEOUT_BROADCAST_END);
     lwmac->tx.state = TX_STATE_STOPPED;
 
     /* Release packet in case of failure */
@@ -104,10 +101,69 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
     {
     case TX_STATE_INIT:
     {
+        lwmac_tx_state_t next_state = TX_STATE_FAILED;
+        uint8_t csma_retries;
+
         lwmac_clear_timeout(lwmac, TIMEOUT_WR);
         lwmac_clear_timeout(lwmac, TIMEOUT_NO_RESPONSE);
+        lwmac_clear_timeout(lwmac, TIMEOUT_NEXT_BROADCAST);
+        lwmac_clear_timeout(lwmac, TIMEOUT_BROADCAST_END);
 
-        GOTO_TX_STATE(TX_STATE_SEND_WR, true);
+        if(_packet_is_broadcast(lwmac->tx.packet)) {
+            csma_retries = LWMAC_BROADCAST_CSMA_RETRIES;
+            next_state = TX_STATE_SEND_BROADCAST;
+        } else {
+            /* Don't attempt to send a WR if channel is busy to get timings
+             * right, will be changed for sending DATA packet */
+            csma_retries = 0;
+            next_state = TX_STATE_SEND_WR;
+        }
+
+        lwmac->netdev->driver->set(lwmac->netdev, NETOPT_CSMA_RETRIES,
+                                    &csma_retries, sizeof(csma_retries));
+
+        GOTO_TX_STATE(next_state, true);
+    }
+    case TX_STATE_SEND_BROADCAST:
+    {
+        gnrc_pktsnip_t* pkt = lwmac->tx.packet;
+        bool first = false;
+
+        if(lwmac_timeout_is_running(lwmac, TIMEOUT_BROADCAST_END)) {
+            if(lwmac_timeout_is_expired(lwmac, TIMEOUT_BROADCAST_END)) {
+                gnrc_pktbuf_release(pkt);
+                lwmac->tx.packet = NULL;
+                GOTO_TX_STATE(TX_STATE_SUCCESSFUL, true);
+            }
+        } else {
+            LOG_INFO("Initialize broadcasting\n");
+            lwmac_set_timeout(lwmac, TIMEOUT_BROADCAST_END, LWMAC_BROADCAST_DURATION_US);
+
+            /* Prepare packet with LwMAC header*/
+            lwmac_hdr_t hdr = {FRAMETYPE_BROADCAST};
+            pkt->next = gnrc_pktbuf_add(pkt->next, &hdr, sizeof(hdr), GNRC_NETTYPE_LWMAC);
+
+            /* No Auto-ACK for broadcast packets */
+            netopt_enable_t autoack = NETOPT_DISABLE;
+            lwmac->netdev->driver->set(lwmac->netdev, NETOPT_AUTOACK, &autoack, sizeof(autoack));
+
+            first = true;
+        }
+
+
+        if( lwmac_timeout_is_expired(lwmac, TIMEOUT_NEXT_BROADCAST) ||
+            first ) {
+            /* Don't let the packet be released yet, we want to send it again */
+            gnrc_pktbuf_hold(pkt, 1);
+
+            lwmac->netdev->driver->send_data(lwmac->netdev, pkt);
+            _set_netdev_state(lwmac, NETOPT_STATE_TX);
+
+            lwmac_set_timeout(lwmac, TIMEOUT_NEXT_BROADCAST, LWMAC_TIME_BETWEEN_BROADCAST_US);
+            LOG_INFO("Broadcast sent\n");
+        }
+
+        break;
     }
     case TX_STATE_SEND_WR:
     {

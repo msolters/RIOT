@@ -97,6 +97,14 @@ extern "C" {
 #define LWMAC_DATA_DELAY_US             (5000U)
 #endif
 
+#ifndef LWMAC_TIME_BETWEEN_BROADCAST_US
+#define LWMAC_TIME_BETWEEN_BROADCAST_US (LWMAC_TIME_BETWEEN_WR_US)
+#endif
+
+#ifndef LWMAC_BROADCAST_DURATION_US
+#define LWMAC_BROADCAST_DURATION_US     ((LWMAC_WAKEUP_INTERVAL_US * 1100) / 1000)
+#endif
+
 /* Max link layer address length in bytes */
 #ifndef LWMAC_MAX_L2_ADDR_LEN
 #define LWMAC_MAX_L2_ADDR_LEN           (2U)
@@ -106,6 +114,12 @@ extern "C" {
  * may timeout the receiver, refer LWMAC_DATA_DELAY_US */
 #ifndef LWMAC_DATA_CSMA_RETRIES
 #define LWMAC_DATA_CSMA_RETRIES         (3U)
+#endif
+
+/* CSMA retries for BROADCAST packet, too many may lead to running out of
+ * destinations wakup period */
+#ifndef LWMAC_BROADCAST_CSMA_RETRIES
+#define LWMAC_BROADCAST_CSMA_RETRIES    (1U)
 #endif
 
 /* Store broadcast packets until unicast transaction has finished. This buffer

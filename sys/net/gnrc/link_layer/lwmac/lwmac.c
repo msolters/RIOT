@@ -184,10 +184,18 @@ bool lwmac_update(void)
     switch(lwmac.state)
     {
     case SLEEPING:
+
         /* If a packet is scheduled, no other (possible earlier) packet can be
-         * sent before the first one is handled
+         * sent before the first one is handled, even no broadcast
          */
         if( !lwmac_timeout_is_running(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP) ) {
+
+            /* Check if there are broadcasts to send and transmit immediately */
+            if(packet_queue_length(&(lwmac.tx.neighbours[0].queue)) > 0) {
+                lwmac.tx.current_neighbour = &(lwmac.tx.neighbours[0]);
+                lwmac_set_state(TRANSMITTING);
+                break;
+            }
 
             lwmac_tx_neighbour_t* neighbour = _next_tx_neighbour(&lwmac);
 
@@ -214,7 +222,7 @@ bool lwmac_update(void)
                 // TODO: bad for power savings
                 rtt_handler(LWMAC_EVENT_RTT_PAUSE);
             } else {
-                /* LOG_DEBUG("Nothing to do, why did we get called?\n"); */
+                /* LOG_WARNING("Nothing to send, why did we get called?\n"); */
             }
         } else {
             if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAIT_FOR_DEST_WAKEUP)) {
@@ -291,6 +299,8 @@ bool lwmac_update(void)
         case TX_STATE_STOPPED:
         {
             gnrc_pktsnip_t* pkt;
+
+//            assert(lwmac.tx.current_neighbour);
 
             if( (pkt = packet_queue_pop(&lwmac.tx.current_neighbour->queue)) )
             {

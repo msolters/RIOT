@@ -100,9 +100,9 @@ void _set_netdev_state(lwmac_t* lwmac, netopt_state_t devstate);
  */
 static inline bool _packet_is_broadcast(gnrc_pktsnip_t* pkt)
 {
-    gnrc_pktsnip_t* netif = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
-    return ( (netif = NULL) ? false :
-                              (((gnrc_netif_hdr_t *)netif->data)->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST) );
+    gnrc_netif_hdr_t* netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
+    return ( (netif_hdr == NULL) ? false :
+                              (netif_hdr->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST) );
 }
 
 /* TX queue handling */
