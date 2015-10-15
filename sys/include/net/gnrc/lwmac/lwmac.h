@@ -119,7 +119,7 @@ extern "C" {
 /* CSMA retries for BROADCAST packet, too many may lead to running out of
  * destinations wakup period */
 #ifndef LWMAC_BROADCAST_CSMA_RETRIES
-#define LWMAC_BROADCAST_CSMA_RETRIES    (1U)
+#define LWMAC_BROADCAST_CSMA_RETRIES    (3U)
 #endif
 
 /* Store broadcast packets until unicast transaction has finished. This buffer
