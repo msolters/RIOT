@@ -111,18 +111,19 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
                 continue;
             }
 
-            if(info.header.type == FRAMETYPE_BROADCAST) {
+            if(info.header->type == FRAMETYPE_BROADCAST) {
                 _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
+                continue;
+            }
+
+            if(info.header->type != FRAMETYPE_WR) {
+                LOG_DEBUG("Packet is not WR: 0x%02x\n", info.header->type);
+                gnrc_pktbuf_release(pkt);
                 continue;
             }
 
             /* No need to keep pkt anymore */
             gnrc_pktbuf_release(pkt);
-
-            if(info.header.type != FRAMETYPE_WR) {
-                LOG_DEBUG("Packet is not WR: 0x%02x\n", info.header.type);
-                continue;
-            }
 
             if(!_addr_match(&lwmac->l2_addr, &info.dst_addr)) {
                 LOG_DEBUG("Packet is WR but not for us\n");
@@ -246,7 +247,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
                 continue;
             }
 
-            if(info.header.type == FRAMETYPE_BROADCAST) {
+            if(info.header->type == FRAMETYPE_BROADCAST) {
                 _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
                 continue;
             }
@@ -264,14 +265,14 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
             }
 
             /* Sender maybe didn't get the WA */
-            if(info.header.type == FRAMETYPE_WR) {
+            if(info.header->type == FRAMETYPE_WR) {
                 LOG_INFO("Found a WR while waiting for DATA\n");
                 lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
                 found_wr = true;
                 break;
             }
 
-            if(info.header.type == FRAMETYPE_DATA) {
+            if(info.header->type == FRAMETYPE_DATA) {
                 LOG_DEBUG("Found DATA!\n");
                 lwmac_clear_timeout(lwmac, TIMEOUT_DATA);
                 found_data = true;
@@ -296,6 +297,7 @@ static bool _lwmac_rx_update(lwmac_t* lwmac)
         if( (lwmac_timeout_is_expired(lwmac, TIMEOUT_DATA)) &&
             (!lwmac->rx_started) ) {
             LOG_INFO("DATA timed out\n");
+            gnrc_pktbuf_release(pkt);
             GOTO_RX_STATE(RX_STATE_FAILED, true);
         }
 

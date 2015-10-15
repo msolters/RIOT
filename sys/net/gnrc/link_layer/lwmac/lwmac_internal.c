@@ -366,7 +366,7 @@ int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
                netif_hdr->src_l2addr_len);
     }
 
-    memcpy(&(info->header), lwmac_hdr, sizeof(lwmac_hdr_t));
+    info->header = lwmac_hdr;
 
     return 0;
 }

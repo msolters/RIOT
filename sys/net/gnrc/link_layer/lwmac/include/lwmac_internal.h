@@ -31,7 +31,7 @@ extern "C" {
 
 /* @brief   Type to pass information about parsing */
 typedef struct {
-    lwmac_hdr_t header;     /**< copied lwmac header of packet */
+    lwmac_hdr_t* header;    /**< lwmac header of packet */
     l2_addr_t  src_addr;    /**< copied source address of packet  */
     l2_addr_t  dst_addr;    /**< copied destination address of packet */
 } lwmac_packet_info_t;
@@ -67,8 +67,7 @@ void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type);
 
 /* @brief Parse an incoming packet and extract important information
  *
- * Copies LwMAC header and addresses, so that @p pkt can be released if payload
- * is not needed.
+ * Copies addresses into @p info, but header points inside @p pkt.
  *
  * @param[in]   pkt             packet that will be parsed
  * @param[out]  info            structure that will hold parsed information

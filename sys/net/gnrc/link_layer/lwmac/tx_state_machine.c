@@ -312,7 +312,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 continue;
             }
 
-            if(info.header.type == FRAMETYPE_BROADCAST) {
+            if(info.header->type == FRAMETYPE_BROADCAST) {
                 _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
                 /* Drop pointer to it can't get released */
                 pkt = NULL;
@@ -330,18 +330,19 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
                 break;
             }
 
-            if(info.header.type == FRAMETYPE_BROADCAST) {
-                /* Broadcast was not from destination node, so continue */
+            if(info.header->type == FRAMETYPE_BROADCAST) {
+                _dispatch_defer(lwmac->rx.dispatch_buffer, pkt);
+                continue;
+            }
+
+            if(info.header->type != FRAMETYPE_WA) {
+                LOG_DEBUG("Packet is not WA: 0x%02x\n", info.header->type);
+                gnrc_pktbuf_release(pkt);
                 continue;
             }
 
             /* No need to keep pkt anymore */
             gnrc_pktbuf_release(pkt);
-
-            if(info.header.type != FRAMETYPE_WA) {
-                LOG_DEBUG("Packet is not WA: 0x%02x\n", info.header.type);
-                continue;
-            }
 
             if(!_addr_match(&lwmac->tx.current_neighbour->l2_addr, &info.src_addr)) {
                 LOG_DEBUG("Packet is not from expected destination\n");
