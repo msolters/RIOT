@@ -56,8 +56,38 @@ typedef enum {
  */
 typedef struct __attribute__((packed)) {
     lwmac_frame_type_t type; /**< type of frame */
-    l2_addr_t dst_addr; /**< WA is broadcast, so destination address needed */
 } lwmac_hdr_t;
+
+/**
+ * @brief   lwMAC WR frame
+ */
+typedef struct __attribute__((packed)) {
+    lwmac_hdr_t header;
+} lwmac_frame_wr_t;
+
+/**
+ * @brief   lwMAC WA frame
+ */
+typedef struct __attribute__((packed)) {
+    lwmac_hdr_t header;
+    l2_addr_t dst_addr; /**< WA is broadcast, so destination address needed */
+} lwmac_frame_wa_t;
+
+/**
+ * @brief   lwMAC broadcast data frame
+ */
+typedef struct __attribute__((packed)) {
+    lwmac_hdr_t header;
+    uint8_t seq_nr;
+} lwmac_frame_broadcast_t;
+
+/**
+ * @brief   lwMAC unicast data frame
+ */
+typedef struct __attribute__((packed)) {
+    lwmac_hdr_t header;
+} lwmac_frame_data_t;
+
 
 void lwmac_print_hdr(lwmac_hdr_t* hdr);
 

@@ -65,7 +65,7 @@ int _get_dest_address(gnrc_pktsnip_t* pkt, uint8_t* pointer_to_addr[]);
  */
 void* _gnrc_pktbuf_find(gnrc_pktsnip_t* pkt, gnrc_nettype_t type);
 
-/* @brief Parse a packet and extract important information
+/* @brief Parse an incoming packet and extract important information
  *
  * Copies LwMAC header and addresses, so that @p pkt can be released if payload
  * is not needed.

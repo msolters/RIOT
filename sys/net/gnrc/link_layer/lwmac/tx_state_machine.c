@@ -140,7 +140,8 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             lwmac_set_timeout(lwmac, TIMEOUT_BROADCAST_END, LWMAC_BROADCAST_DURATION_US);
 
             /* Prepare packet with LwMAC header*/
-            lwmac_hdr_t hdr = {FRAMETYPE_BROADCAST};
+            lwmac_frame_broadcast_t hdr = {};
+            hdr.header.type = FRAMETYPE_BROADCAST;
             pkt->next = gnrc_pktbuf_add(pkt->next, &hdr, sizeof(hdr), GNRC_NETTYPE_LWMAC);
 
             /* No Auto-ACK for broadcast packets */
@@ -182,9 +183,10 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         }
 
         /* Assemble WR */
-        lwmac_hdr_t lwmac_hdr = {FRAMETYPE_WR};
+        lwmac_frame_wr_t wr_hdr = {};
+        wr_hdr.header.type = FRAMETYPE_WR;
 
-        pkt = gnrc_pktbuf_add(NULL, &lwmac_hdr, sizeof(lwmac_hdr), GNRC_NETTYPE_LWMAC);
+        pkt = gnrc_pktbuf_add(NULL, &wr_hdr, sizeof(wr_hdr), GNRC_NETTYPE_LWMAC);
         if(pkt == NULL) {
             LOG_ERROR("Cannot allocate pktbuf of type GNRC_NETTYPE_LWMAC\n");
             GOTO_TX_STATE(TX_STATE_FAILED, true);

@@ -304,10 +304,11 @@ bool _queue_tx_packet(lwmac_t* lwmac,  gnrc_pktsnip_t* pkt)
 int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
 {
     gnrc_netif_hdr_t* netif_hdr;
-    lwmac_hdr_t* lwmac_hdr;
     gnrc_pktsnip_t* lwmac_snip;
+    lwmac_hdr_t* lwmac_hdr;
 
     assert(info != NULL);
+    assert(pkt != NULL);
 
     netif_hdr = _gnrc_pktbuf_find(pkt, GNRC_NETTYPE_NETIF);
     if(netif_hdr == NULL) {
@@ -315,11 +316,28 @@ int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
     }
 
     /* Dissect lwMAC header */
-    lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_hdr_t), GNRC_NETTYPE_LWMAC);
-    lwmac_hdr = lwmac_snip->data;
-    if(lwmac_hdr == NULL) {
+
+    /* every frame has header as first member */
+    lwmac_hdr = (lwmac_hdr_t*) pkt->data;
+    switch(lwmac_hdr->type) {
+    case FRAMETYPE_WR:
+        lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_frame_wr_t), GNRC_NETTYPE_LWMAC);
+        break;
+    case FRAMETYPE_WA:
+        lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_frame_wa_t), GNRC_NETTYPE_LWMAC);
+        break;
+    case FRAMETYPE_DATA:
+        lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_frame_data_t), GNRC_NETTYPE_LWMAC);
+        break;
+    case FRAMETYPE_BROADCAST:
+        lwmac_snip = gnrc_pktbuf_mark(pkt, sizeof(lwmac_frame_broadcast_t), GNRC_NETTYPE_LWMAC);
+        break;
+    default:
         return -2;
     }
+
+    /* Memory location may have changed while marking */
+    lwmac_hdr = lwmac_snip->data;
 
     if(netif_hdr->dst_l2addr_len > sizeof(info->dst_addr)) {
         return -3;
@@ -329,8 +347,9 @@ int _parse_packet(gnrc_pktsnip_t* pkt, lwmac_packet_info_t* info)
         return -4;
     }
 
-    if(netif_hdr->flags & GNRC_NETIF_HDR_FLAGS_BROADCAST) {
-        info->dst_addr = lwmac_hdr->dst_addr;
+    if(lwmac_hdr->type == FRAMETYPE_WA) {
+        /* WA is broadcast, so get dst address out of header instead of netif */
+        info->dst_addr = ((lwmac_frame_wa_t*)lwmac_hdr)->dst_addr;
     } else {
         if(netif_hdr->dst_l2addr_len) {
             info->dst_addr.len = netif_hdr->dst_l2addr_len;
