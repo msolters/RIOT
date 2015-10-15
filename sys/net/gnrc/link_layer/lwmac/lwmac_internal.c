@@ -142,7 +142,7 @@ void _init_neighbour(lwmac_tx_neighbour_t* neighbour, uint8_t* addr, int len)
 /* TODO: maybe static inline */
 uint32_t _ticks_to_phase(uint32_t ticks)
 {
-    return (ticks % RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+    return (ticks % RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US));
 }
 
 /******************************************************************************/
@@ -157,7 +157,7 @@ uint32_t _phase_to_ticks(uint32_t phase)
 
     /* Phase only in next interval */
     if(phase < phase_now) {
-        rtt_now += RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
+        rtt_now += RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US);
     }
 
     /* Advance to phase */
@@ -178,7 +178,7 @@ uint32_t _ticks_until_phase(uint32_t phase)
     long int tmp = phase - _phase_now();
     if(tmp < 0) {
         /* Phase in next interval */
-        tmp += RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS);
+        tmp += RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US);
     }
 
     return (uint32_t)tmp;

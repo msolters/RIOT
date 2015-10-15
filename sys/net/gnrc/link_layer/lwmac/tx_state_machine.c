@@ -165,7 +165,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             wait_until -= RTT_US_TO_TICKS(LWMAC_WR_BEFORE_PHASE_US);
 
             /* This output blocks a long time and can prevent correct timing */
-            LOG_DEBUG("Phase length:  %"PRIu32"\n", RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+            LOG_DEBUG("Phase length:  %"PRIu32"\n", RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US));
             LOG_DEBUG("Wait until:    %"PRIu32"\n", wait_until);
             LOG_DEBUG("     phase:    %"PRIu32"\n", _ticks_to_phase(wait_until));
             LOG_DEBUG("Ticks to wait: %"PRIu32"\n", (long int)wait_until - rtt_get_counter());
@@ -197,10 +197,8 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             break;
         }
 
-        /* Set timeout after sending to get the timing right */
         if(lwmac->tx.wr_sent == 0) {
-            /* Timeout after | awake | sleeeeeping .... | awake | of destiantion */
-            lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, LWMAC_WAKEUP_INTERVAL_MS * 1000);
+            lwmac_set_timeout(lwmac, TIMEOUT_NO_RESPONSE, LWMAC_WAKEUP_INTERVAL_US);
         }
 
         lwmac->tx.wr_sent++;
@@ -216,7 +214,7 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         /* Debug WR timing */
         LOG_DEBUG("Destination phase was: %"PRIu32"\n", lwmac->tx.current_neighbour->phase);
         LOG_DEBUG("Phase when sent was:   %"PRIu32"\n", _ticks_to_phase(lwmac->tx.timestamp));
-        LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", rtt_get_counter());
+        LOG_DEBUG("Ticks when sent was:   %"PRIu32"\n", lwmac->tx.timestamp);
 
         GOTO_TX_STATE(TX_STATE_WAIT_FOR_WA, false);
     }

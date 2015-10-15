@@ -199,7 +199,7 @@ bool lwmac_update(void)
                 /* If there's not enough time to prepare a WR to catch the phase
                  * postpone to next interval */
                 if (time_until_tx < LWMAC_WR_PREPARATION_US) {
-                    time_until_tx += LWMAC_WAKEUP_INTERVAL_MS * 1000;
+                    time_until_tx += LWMAC_WAKEUP_INTERVAL_US;
                 }
 
                 time_until_tx -= LWMAC_WR_PREPARATION_US;
@@ -230,8 +230,7 @@ bool lwmac_update(void)
         /* Set timeout for if there's no successful rx transaction that will
          * change state to SLEEPING. */
         if(!lwmac_timeout_is_running(&lwmac, TIMEOUT_WAKEUP_PERIOD)) {
-            lwmac_set_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD,
-                                (LWMAC_WAKEUP_DURATION_MS * 1000) );
+            lwmac_set_timeout(&lwmac, TIMEOUT_WAKEUP_PERIOD, LWMAC_WAKEUP_DURATION_US);
         } else if(lwmac_timeout_is_expired(&lwmac, TIMEOUT_WAKEUP_PERIOD)) {
             /* Dispatch first as there still may be broadcast packets. */
             _dispatch(lwmac.rx.dispatch_buffer);
@@ -360,14 +359,14 @@ void rtt_handler(uint32_t event)
     {
     case LWMAC_EVENT_RTT_WAKEUP_PENDING:
         lwmac.last_wakeup = rtt_get_alarm();
-        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_DURATION_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_US_TO_TICKS(LWMAC_WAKEUP_DURATION_US));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
         lpm_prevent_sleep = 1;
         lwmac_set_state(LISTENING);
         break;
 
     case LWMAC_EVENT_RTT_SLEEP_PENDING:
-        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         lpm_prevent_sleep = 0;
         lwmac_set_state(SLEEPING);
@@ -376,7 +375,7 @@ void rtt_handler(uint32_t event)
     /* Set initial wakeup alarm that starts the cycle */
     case LWMAC_EVENT_RTT_START:
         LOG_DEBUG("RTT: Initialize duty cycling\n");
-        alarm = rtt_get_counter() + RTT_MS_TO_TICKS(150);
+        alarm = rtt_get_counter() + RTT_US_TO_TICKS(LWMAC_WAKEUP_DURATION_US);
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_SLEEP_PENDING);
         lpm_prevent_sleep = 1;
         lwmac.dutycycling_active = true;
@@ -392,7 +391,7 @@ void rtt_handler(uint32_t event)
 
     case LWMAC_EVENT_RTT_RESUME:
         LOG_DEBUG("RTT: Resume duty cycling\n");
-        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_MS_TO_TICKS(LWMAC_WAKEUP_INTERVAL_MS));
+        alarm = _next_inphase_event(lwmac.last_wakeup, RTT_US_TO_TICKS(LWMAC_WAKEUP_INTERVAL_US));
         rtt_set_alarm(alarm, rtt_cb, (void*) LWMAC_EVENT_RTT_WAKEUP_PENDING);
         lpm_prevent_sleep = 0;
         lwmac.dutycycling_active = true;

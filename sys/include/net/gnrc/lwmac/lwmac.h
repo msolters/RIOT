@@ -64,16 +64,16 @@ extern "C" {
 #define LWMAC_RX_QUEUE_SIZE             (8U)
 #endif
 
-#ifndef LWMAC_WAKEUP_INTERVAL_MS
-#define LWMAC_WAKEUP_INTERVAL_MS        (100U)
+#ifndef LWMAC_WAKEUP_INTERVAL_US
+#define LWMAC_WAKEUP_INTERVAL_US        (100U * 1000)
 #endif
 
 #ifndef LWMAC_TIME_BETWEEN_WR_US
 #define LWMAC_TIME_BETWEEN_WR_US        (7000U)
 #endif
 
-#ifndef LWMAC_WAKEUP_DURATION_MS
-#define LWMAC_WAKEUP_DURATION_MS        (LWMAC_TIME_BETWEEN_WR_US / 1000 * 2)
+#ifndef LWMAC_WAKEUP_DURATION_US
+#define LWMAC_WAKEUP_DURATION_US        (LWMAC_TIME_BETWEEN_WR_US * 2)
 #endif
 
 /* Start sending earlier then known phase. Therefore advance to beginning edge
