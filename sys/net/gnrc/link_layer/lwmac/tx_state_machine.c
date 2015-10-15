@@ -282,13 +282,13 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
         bool found_wa = false;
         bool postponed = false;
 
-        if(lwmac_timeout_is_expired(lwmac, TIMEOUT_WR)) {
-            GOTO_TX_STATE(TX_STATE_SEND_WR, true);
-        }
-
         if(lwmac_timeout_is_expired(lwmac, TIMEOUT_NO_RESPONSE)) {
             LOG_DEBUG("No response from destination\n");
             GOTO_TX_STATE(TX_STATE_FAILED, true);
+        }
+
+        if(lwmac_timeout_is_expired(lwmac, TIMEOUT_WR)) {
+            GOTO_TX_STATE(TX_STATE_SEND_WR, true);
         }
 
         if(_get_netdev_state(lwmac) == NETOPT_STATE_RX) {
