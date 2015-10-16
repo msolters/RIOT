@@ -432,19 +432,29 @@ void lwmac_print_hdr(lwmac_hdr_t* hdr)
         puts("Wakeup request (WR)");
         break;
     case FRAMETYPE_WA:
+    {
         puts("Wakeup acknowledge (WA)");
+        printf("  Src addr:");
+        lwmac_frame_wa_t* wa = (lwmac_frame_wa_t*) hdr;
+        for(int i = 0; i < wa->dst_addr.len; i++) {
+            printf("0x%02x", wa->dst_addr.addr[i]);
+            if(i < (wa->dst_addr.len - 1)) {
+                printf(":");
+            }
+        }
         break;
+    }
     case FRAMETYPE_DATA:
         puts("User data");
         break;
     case FRAMETYPE_BROADCAST:
         puts("Broadcast user data");
+        printf("  Sequence number: %d\n", ((lwmac_frame_broadcast_t*)hdr)->seq_nr);
         break;
     default:
         puts("Unkown type");
+        printf("  Raw:  0x%02x\n", hdr->type);
     }
-
-    printf("  Raw:  0x%02x\n", hdr->type);
 }
 
 /******************************************************************************/
