@@ -536,6 +536,10 @@ static void *_lwmac_thread(void *args)
     lwmac.l2_addr.len = dev->driver->get(dev, NETOPT_ADDRESS, &lwmac.l2_addr.addr, sizeof(lwmac.l2_addr.addr));
     assert(lwmac.l2_addr.len > 0);
 
+    /* Initialize broadcast sequence number. This at least differs from board
+     * to board */
+    lwmac.tx.bcast_seqnr = lwmac.l2_addr.addr[0];
+
     /* Initialize receive packet queue */
     packet_queue_init(&lwmac.rx.queue,
                       lwmac.rx._queue_nodes,

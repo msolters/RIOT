@@ -151,6 +151,8 @@ typedef struct {
     /* Queue of destination node to which the current packet will be sent */
     lwmac_tx_neighbour_t* current_neighbour;
     uint32_t timestamp;
+    /* Sequence number for broadcast data to filter at receiver */
+    uint8_t bcast_seqnr;
 } lwmac_tx_t;
 
 #define LWMAC_TX_INIT { \
@@ -160,7 +162,8 @@ typedef struct {
 /* tx::wr_sent */           0, \
 /* tx::packet */            NULL, \
 /* tx::current_neighbour */ NULL, \
-/* tx::timestamp */         0 \
+/* tx::timestamp */         0, \
+/* tx:bcast_seqnr */        0, \
 }
 
 /******************************************************************************/

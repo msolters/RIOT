@@ -142,6 +142,8 @@ static bool _lwmac_tx_update(lwmac_t* lwmac)
             /* Prepare packet with LwMAC header*/
             lwmac_frame_broadcast_t hdr = {};
             hdr.header.type = FRAMETYPE_BROADCAST;
+            hdr.seq_nr = lwmac->tx.bcast_seqnr++;
+
             pkt->next = gnrc_pktbuf_add(pkt->next, &hdr, sizeof(hdr), GNRC_NETTYPE_LWMAC);
 
             /* No Auto-ACK for broadcast packets */
