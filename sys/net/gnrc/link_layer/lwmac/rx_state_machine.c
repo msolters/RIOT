@@ -28,7 +28,7 @@
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
 
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_WARNING
 #include "log.h"
 
 #undef LOG_ERROR
