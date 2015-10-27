@@ -69,6 +69,15 @@ extern "C" {
 /* @} */
 
 /**
+ * @brief SPI configuration
+ * @{
+ */
+#define SPI_NUMOF           (2U)
+#define SPI_0_EN            1
+#define SPI_1_EN            1
+/* @} */
+
+/**
  *  * @name GPIO configuration
  *   * @{
  */
@@ -248,6 +257,15 @@ extern "C" {
 #define PWM_1_CH2_EN        1
 #define PWM_1_CH2_IOCON     LPC_IOCON->PIO1_26
 #define PWM_1_CH2_AF        0x81
+/* @} */
+
+/**
+ * @brief ADC configuration
+ * @{
+ */
+#define ADC_NUMOF           (1U)
+#define ADC_0_EN            1
+#define ADC_MAX_CHANNELS    8
 /* @} */
 
 #ifdef __cplusplus
