@@ -367,7 +367,6 @@ ifneq (,$(filter gnrc_netdev2,$(USEMODULE)))
   USEMODULE += netopt
 endif
 
-<<<<<<< HEAD
 ifneq (,$(filter gnrc_lwmac,$(USEMODULE)))
   USEMODULE += xtimer
 endif
