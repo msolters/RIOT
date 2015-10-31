@@ -32,6 +32,13 @@ extern "C" {
  */
 #define F_CPU               (16000000UL)
 
+#define AT86RF231_SPI       SPI_0
+#define AT86RF231_CS        GPIO_PIN(PA, 05)
+#define AT86RF231_INT       GPIO_PIN(PB, 04)
+#define AT86RF231_RESET     GPIO_PIN(PB, 06)
+#define AT86RF231_SLEEP     GPIO_PIN(PB, 07)
+#define AT86RF231_SPI_CLK   (SPI_SPEED_5MHZ)
+
 /** @}*/
 /**
  * @name Define UART device and baudrate for stdio
