@@ -23,6 +23,7 @@
 #ifndef RTT_H
 #define RTT_H
 
+#include <stdint.h>
 #include "periph_conf.h"
 
 #ifdef __cplusplus
