@@ -23,6 +23,7 @@ else
   USEMODULE += at86rf231
 endif
 
+USE_BOARD_PARAMETERS=true
 ifneq (true,$(USE_BOARD_PARAMETERS))
   # This adds . to include path so generic at86rf2xx_params.h gets picked
   # up.  All boards actually having such a device on board should define
