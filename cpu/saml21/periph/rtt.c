@@ -114,6 +114,11 @@ void rtt_clear_alarm(void)
     RTC->MODE0.INTENCLR.bit.CMP0 = 1;
 }
 
+uint32_t rtt_get_alarm(void)
+{
+    return RTC->MODE0.COMP[0].reg;;
+}
+
 void rtt_poweron(void)
 {
     DEBUG("%s:%d\n", __func__, __LINE__);
