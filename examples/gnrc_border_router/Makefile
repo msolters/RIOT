@@ -12,6 +12,8 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon msb-430 msb-430h pca10000 pca10005 \
                              stm32f0discovery telosb weio wsn430-v1_3b \
                              wsn430-v1_4 yunjia-nrf51822 z1
 
+FEATURES_REQUIRED = periph_gpio periph_spi
+
 ifeq (,$(SLIP_UART))
   # set default (last available UART)
   SLIP_UART="UART_DEV(UART_NUMOF-1)"
@@ -30,8 +32,10 @@ CFLAGS += -DSLIP_BAUDRATE=$(SLIP_BAUDRATE)
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
 USEMODULE += gnrc_netif_default
 USEMODULE += auto_init_gnrc_netif
+USEMODULE += gnrc_netdev2
+USEMODULE += ksz8851snl
 # Include SLIP package for IP over Serial communication
-USEMODULE += gnrc_slip
+#USEMODULE += gnrc_slip
 # Specify the mandatory networking modules for 6LoWPAN border router
 USEMODULE += gnrc_sixlowpan_border_router_default
 # Add forwarding table
