@@ -24,17 +24,17 @@ extern "C" {
 #endif
 
 /**
- * @name AT86RF231 configuration
+ * @name AT86RF233 configuration
  */
 static const  at86rf2xx_params_t at86rf2xx_params[] =
     {
         {
-            .spi = AT86RF231_SPI,
-            .spi_speed = AT86RF231_SPI_CLK,
-            .cs_pin = AT86RF231_CS,
-            .int_pin = AT86RF231_INT,
-            .sleep_pin = AT86RF231_SLEEP,
-            .reset_pin = AT86RF231_RESET,
+            .spi = AT86RF233_SPI,
+            .spi_speed = AT86RF233_SPI_CLK,
+            .cs_pin = AT86RF233_CS,
+            .int_pin = AT86RF233_INT,
+            .sleep_pin = AT86RF233_SLEEP,
+            .reset_pin = AT86RF233_RESET,
         },
     };
 /** @} */
