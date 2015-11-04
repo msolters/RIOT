@@ -32,12 +32,17 @@ extern "C" {
  */
 #define F_CPU               (16000000UL)
 
-#define AT86RF231_SPI       SPI_0
-#define AT86RF231_CS        GPIO_PIN(PA, 05)
-#define AT86RF231_INT       GPIO_PIN(PB, 04)
-#define AT86RF231_RESET     GPIO_PIN(PB, 06)
-#define AT86RF231_SLEEP     GPIO_PIN(PB, 07)
-#define AT86RF231_SPI_CLK   (SPI_SPEED_5MHZ)
+/**
+* @name AT86RF233 configuration
+* @{
+*/
+#define AT86RF233_SPI       SPI_0
+#define AT86RF233_CS        GPIO_PIN(PA, 05)
+#define AT86RF233_INT       GPIO_PIN(PB, 04)
+#define AT86RF233_RESET     GPIO_PIN(PA, 12)
+#define AT86RF233_SLEEP     GPIO_PIN(PA, 02)
+#define AT86RF233_SPI_CLK   SPI_SPEED_1MHZ
+/** @}*/
 
 /** @}*/
 /**
