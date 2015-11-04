@@ -31,7 +31,9 @@ CFLAGS += -DSLIP_BAUDRATE=$(SLIP_BAUDRATE)
 USEMODULE += gnrc_netif_default
 USEMODULE += auto_init_gnrc_netif
 # Include SLIP package for IP over Serial communication
-USEMODULE += gnrc_slip
+USEMODULE += gnrc_netdev2
+USEMODULE += ksz8851snl
+#USEMODULE += gnrc_slip
 # Specify the mandatory networking modules for 6LoWPAN border router
 USEMODULE += gnrc_sixlowpan_border_router_default
 # Add forwarding table
