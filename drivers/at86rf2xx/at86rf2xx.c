@@ -31,7 +31,7 @@
 #include "at86rf2xx_internal.h"
 #include "at86rf2xx_netdev.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 
@@ -75,7 +75,9 @@ int at86rf2xx_init(at86rf2xx_t *dev, spi_t spi, spi_speed_t spi_speed,
     at86rf2xx_assert_awake(dev);
 
     /* test if the SPI is set up correctly and the device is responding */
-    if (at86rf2xx_reg_read(dev, AT86RF2XX_REG__PART_NUM) !=
+    uint8_t at86rf_partnum = at86rf2xx_reg_read(dev, AT86RF2XX_REG__PART_NUM);
+    printf("%u", at86rf_partnum);
+    if (at86rf_partnum !=
         AT86RF2XX_PARTNUM) {
         DEBUG("[at86rf2xx] error: unable to read correct part number\n");
         return -1;
